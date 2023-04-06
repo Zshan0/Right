@@ -12,6 +12,7 @@ WIDTH = 900
 ACC = 0.5
 FRIC = -0.25
 FPS = 60
+FALL_VEL = 3
 
 FramePerSec = pygame.time.Clock()
 
@@ -29,14 +30,12 @@ class Player(pygame.sprite.Sprite):
         self.rect.center = (WIDTH / 2, HEIGHT / 2)
 
         self.vel = vec(0, 0)
-        self.acc = vec(0, 0)
+        self.acc = vec(0, 0.5)
         self.jumping = False
         self.score = 0
         self.flipped = False
 
     def move(self):
-        self.acc = vec(0, 0.5)
-
         pressed_keys = pygame.key.get_pressed()
 
         if pressed_keys[K_LEFT]:
@@ -46,6 +45,10 @@ class Player(pygame.sprite.Sprite):
 
         self.acc.x += self.vel.x * FRIC
         self.vel += self.acc
+
+        # Capping velocity
+        if self.flipped and self.vel.y < -FALL_VEL:
+            self.vel.y = -FALL_VEL
 
         pos = self.rect.midbottom
         pos += self.vel + 0.5 * self.acc
@@ -90,8 +93,10 @@ class Player(pygame.sprite.Sprite):
     def flip(self):
         self.flipped = not self.flipped
         if self.flipped:
+            self.acc = vec(0, -0.5)
             self.surf.fill((0, 255, 255))
         else:
+            self.acc = vec(0, 0.5)
             self.surf.fill((255, 255, 0))
 
 
@@ -128,7 +133,6 @@ def check(platform, groupies):
                 abs(platform.rect.bottom - entity.rect.top) < 40
             ):
                 return True
-        C = False
 
 
 def plat_gen():
@@ -150,25 +154,29 @@ def plat_gen():
 
 PT1 = platform()
 P1 = Player()
-
-PT1.surf = pygame.Surface((WIDTH, 20))
-PT1.surf.fill((255, 0, 0))
-PT1.rect = PT1.surf.get_rect(center=(WIDTH / 2, HEIGHT - 10))
-
-all_sprites = pygame.sprite.Group()
-all_sprites.add(PT1)
-all_sprites.add(P1)
-
 platforms = pygame.sprite.Group()
-platforms.add(PT1)
+all_sprites = pygame.sprite.Group()
+def init():
+    global flipIn
+    all_sprites.add(P1)
 
-PT1.moving = False
-PT1.point = False  ##
-flipIn = 300
+    # The base platform
+    PT1.surf = pygame.Surface((WIDTH, 20))
+    PT1.surf.fill((255, 0, 0))
+    PT1.rect = PT1.surf.get_rect(center=(WIDTH / 2, HEIGHT - 10))
+
+    all_sprites.add(PT1)
+    platforms.add(PT1)
+
+    PT1.moving = False
+    PT1.point = False
+    flipIn = 300
+
+    init_platform(20)
+
 
 # GAME STATES
 INVERSE = False
-
 
 def flip_state():
     global INVERSE
@@ -211,9 +219,9 @@ def end_game():
         time.sleep(1)
         displaysurface.fill((255, 0, 0))
         pygame.display.update()
-        time.sleep(1)
-        pygame.quit()
-        sys.exit()
+    time.sleep(1)
+    pygame.quit()
+    sys.exit()
 
 
 def shift_level_up():
@@ -226,8 +234,7 @@ def shift_level_up():
 
 def main():
     global flipIn
-    init_platform(20)
-
+    init()
     while True:
         flipIn -= 1
 
@@ -235,6 +242,7 @@ def main():
             P1.gonnaFlip()
 
         if flipIn == 0:
+            flipIn = 300
             flip_state()
 
         P1.update()
