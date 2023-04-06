@@ -9,7 +9,7 @@ vec = pygame.math.Vector2  # 2 for two dimensional
 
 HEIGHT = 900
 WIDTH = 900
-ACC = 0.5
+PLAYER_HORIZONTAL_VEL = 2
 FRIC = -0.25
 FPS = 60
 FALL_VEL = 3
@@ -41,9 +41,11 @@ class Player(pygame.sprite.Sprite):
         pressed_keys = pygame.key.get_pressed()
 
         if pressed_keys[K_LEFT]:
-            self.acc.x = -ACC * (-1 if self.flipped else 1)
+            self.acc.x = -PLAYER_HORIZONTAL_VEL
         if pressed_keys[K_RIGHT]:
-            self.acc.x = ACC * (-1 if self.flipped else 1)
+            self.acc.x = PLAYER_HORIZONTAL_VEL
+
+        self.acc.x *= (-1 if self.flipped else 1)
         if pressed_keys[K_SPACE] and len(hits) > 0 and not self.jumping:
             # jumping
             self.jumping = True
@@ -55,11 +57,8 @@ class Player(pygame.sprite.Sprite):
                 if event.key == pygame.K_SPACE:
                     P1.cancel_jump()
 
-        # no friction for now
-        self.acc.x += self.vel.x * FRIC
-        if abs(self.vel.x) <= 0.01:
-            self.vel.x = 0
-            
+        # print(self.acc)
+        self.vel.x = 0
         self.vel += self.acc
 
         # Capping velocity
@@ -67,13 +66,14 @@ class Player(pygame.sprite.Sprite):
             self.vel.y = -FALL_VEL
         # enable with friction
 
-        
         if self.collided_platform:
             self.vel.x += self.collided_platform.vel.x
 
         pos = self.rect.midbottom
+        
+        # print(pos, self.vel)
         pos += self.vel
-
+        # print(pos)
         if pos.x > WIDTH:
             pos.x = 0
         if pos.x < 0:
@@ -240,7 +240,6 @@ def main():
             P1.gonnaFlip()
 
         if flipIn == 0:
-            flipIn = 300
             flip_state()
             flipIn = 400 + random.randint(-60, 60)
 
