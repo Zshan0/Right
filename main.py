@@ -12,7 +12,6 @@ WIDTH = 900
 PLAYER_HORIZONTAL_VEL = 2
 FRIC = -0.25
 FPS = 60
-FALL_VEL = 3
 GRAVITY = 0.5
 
 FramePerSec = pygame.time.Clock()
@@ -31,21 +30,41 @@ class Player(pygame.sprite.Sprite):
         self.rect.center = (WIDTH / 2, HEIGHT / 2)
 
         self.vel = vec(0, 0)
-        self.acc = vec(0, 0.5)
+        self.acc = vec(0, 0)
         self.jumping = False
         self.score = 0
         self.flipped = False
         self.collided_platform = None
 
     def move(self):
+        # handle collisions
+        hits = pygame.sprite.spritecollide(self, platforms, False)
+        if len(hits) != 0:
+            if self.vel.y < 0:
+                # going up, I can only collide from below
+                for collided_platform in hits:
+                    self.rect.top = collided_platform.rect.bottom + 1
+                    self.vel.y = 0
+
+            elif self.vel.y > 0:
+                # going down, I can only collide from above
+                for collided_platform in hits:
+                    self.rect.bottom = collided_platform.rect.top + 1
+                    self.vel.y = 0
+                    self.jumping = False
+                    self.collided_platform = collided_platform
+            else:
+                pass
+
+        self.acc = vec(0, GRAVITY)
         pressed_keys = pygame.key.get_pressed()
 
         if pressed_keys[K_LEFT]:
-            self.acc.x = -PLAYER_HORIZONTAL_VEL
+            self.acc.x = -PLAYER_HORIZONTAL_VEL * (-1 if self.flipped else 1)
         if pressed_keys[K_RIGHT]:
             self.acc.x = PLAYER_HORIZONTAL_VEL
-
         self.acc.x *= (-1 if self.flipped else 1)
+        
         if pressed_keys[K_SPACE] and len(hits) > 0 and not self.jumping:
             # jumping
             self.jumping = True
@@ -61,19 +80,14 @@ class Player(pygame.sprite.Sprite):
         self.vel.x = 0
         self.vel += self.acc
 
-        # Capping velocity
-        if self.flipped and self.vel.y < -FALL_VEL:
-            self.vel.y = -FALL_VEL
-        # enable with friction
-
         if self.collided_platform:
             self.vel.x += self.collided_platform.vel.x
 
         pos = self.rect.midbottom
         
-        # print(pos, self.vel)
+        print(pos, self.vel)
         pos += self.vel
-        # print(pos)
+        print(pos)
         if pos.x > WIDTH:
             pos.x = 0
         if pos.x < 0:
@@ -92,10 +106,8 @@ class Player(pygame.sprite.Sprite):
     def flip(self):
         self.flipped = not self.flipped
         if self.flipped:
-            self.acc = vec(0, -0.5)
             self.surf.fill((0, 255, 255))
         else:
-            self.acc = vec(0, 0.5)
             self.surf.fill((255, 255, 0))
 
 
@@ -132,6 +144,7 @@ def check(platform, groupies):
                 abs(platform.rect.bottom - entity.rect.top) < 40
             ):
                 return True
+        C = False
 
 
 def plat_gen():
@@ -153,31 +166,25 @@ def plat_gen():
 
 PT1 = platform()
 P1 = Player()
-platforms = pygame.sprite.Group()
+
+PT1.surf = pygame.Surface((WIDTH, 20))
+PT1.surf.fill((255, 0, 0))
+PT1.rect = PT1.surf.get_rect(center=(WIDTH / 2, HEIGHT - 10))
+
 all_sprites = pygame.sprite.Group()
-def init():
-    global flipIn
-    all_sprites.add(P1)
+all_sprites.add(PT1)
+all_sprites.add(P1)
 
-    # The base platform
-    PT1.surf = pygame.Surface((WIDTH, 20))
-    PT1.surf.fill((255, 0, 0))
-    PT1.rect = PT1.surf.get_rect(center=(WIDTH / 2, HEIGHT - 10))
-
-    all_sprites.add(PT1)
-    platforms.add(PT1)
-
-    PT1.moving = False
-    PT1.point = False
-    flipIn = 300
-
-    init_platform(20)
+platforms = pygame.sprite.Group()
+platforms.add(PT1)
 
 PT1.moving = False
-PT1.point = False 
+PT1.point = False
+flipIn = 300
 
 # GAME STATES
 INVERSE = False
+
 
 def flip_state():
     global INVERSE
@@ -217,9 +224,9 @@ def end_game():
         time.sleep(1)
         displaysurface.fill((255, 0, 0))
         pygame.display.update()
-    time.sleep(1)
-    pygame.quit()
-    sys.exit()
+        time.sleep(1)
+        pygame.quit()
+        sys.exit()
 
 
 def shift_level_up():
@@ -232,7 +239,8 @@ def shift_level_up():
 
 def main():
     global flipIn
-    init()
+    init_platform(20)
+
     while True:
         flipIn -= 1
 
@@ -240,7 +248,7 @@ def main():
             P1.gonnaFlip()
 
         if flipIn == 0:
-            flip_state()
+            # flip_state()
             flipIn = 400 + random.randint(-60, 60)
 
         keyboard_events()
