@@ -200,6 +200,25 @@ def keyboard_events():
                 P1.cancel_jump()
 
 
+def end_game():
+    for entity in all_sprites:
+        entity.kill()
+        time.sleep(1)
+        displaysurface.fill((255, 0, 0))
+        pygame.display.update()
+        time.sleep(1)
+        pygame.quit()
+        sys.exit()
+
+
+def shift_level_up():
+    P1.pos.y += abs(P1.vel.y)
+    for plat in platforms:
+        plat.rect.y += abs(P1.vel.y)
+        if plat.rect.top >= HEIGHT:
+            plat.kill()
+
+
 def main():
     global flipIn
     init_platform(random.randint(4, 5))
@@ -217,21 +236,11 @@ def main():
         keyboard_events()
 
         if P1.rect.top > HEIGHT:
-            for entity in all_sprites:
-                entity.kill()
-                time.sleep(1)
-                displaysurface.fill((255, 0, 0))
-                pygame.display.update()
-                time.sleep(1)
-                pygame.quit()
-                sys.exit()
+            # player dies.
+            end_game()
 
         if P1.rect.top <= HEIGHT / 3:
-            P1.pos.y += abs(P1.vel.y)
-            for plat in platforms:
-                plat.rect.y += abs(P1.vel.y)
-                if plat.rect.top >= HEIGHT:
-                    plat.kill()
+            shift_level_up()
 
         plat_gen()
         displaysurface.fill((0, 0, 0))
