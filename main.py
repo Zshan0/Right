@@ -7,8 +7,8 @@ import time
 pygame.init()
 vec = pygame.math.Vector2  # 2 for two dimensional
 
-HEIGHT = 1000
-WIDTH = 1000
+HEIGHT = 900
+WIDTH = 900
 ACC = 0.5
 FRIC = -0.25
 FPS = 60
@@ -68,18 +68,27 @@ class Player(pygame.sprite.Sprite):
 
     def update(self):
         hits = pygame.sprite.spritecollide(self, platforms, False)
-        if self.vel.y > 0:
-            if hits:
-                if self.pos.y < hits[0].rect.bottom:
-                    if hits[0].point == True:
-                        hits[0].point = False
-                        self.score += 1
-                    self.pos.y = hits[0].rect.top + 1
-                    self.vel.y = 0
-                    self.jumping = False
+        if self.vel.y <= 0 or not hits:
+            return
+        
+        if len(hits) > 1:
+            assert False
+        
+        collidedPlatform = hits[0]
+
+        if self.pos.y < collidedPlatform.rect.top:
+            print(collidedPlatform.rect.top, self.pos.y)
+            self.pos.y = collidedPlatform.rect.bottom - 1
+            self.vel.y = 0
+        else:
+            if collidedPlatform.point == True:
+                collidedPlatform.point = False
+                self.score += 1
+            self.pos.y = collidedPlatform.rect.top + 1
+            self.vel.y = 0
+            self.jumping = False
 
     def gonnaFlip(self):
-        print("Flipping in 3")
         self.surf.fill((255, 255, 255))
 
     def flip(self):
