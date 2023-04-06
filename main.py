@@ -26,8 +26,8 @@ class Player(pygame.sprite.Sprite):
         self.surf = pygame.Surface((30, 30))
         self.surf.fill((255, 255, 0))
         self.rect = self.surf.get_rect()
+        self.rect.center = (WIDTH / 2, HEIGHT / 2)
 
-        self.pos = vec((10, 360))
         self.vel = vec(0, 0)
         self.acc = vec(0, 0)
         self.jumping = False
@@ -46,14 +46,16 @@ class Player(pygame.sprite.Sprite):
 
         self.acc.x += self.vel.x * FRIC
         self.vel += self.acc
-        self.pos += self.vel + 0.5 * self.acc
 
-        if self.pos.x > WIDTH:
-            self.pos.x = 0
-        if self.pos.x < 0:
-            self.pos.x = WIDTH
+        pos = self.rect.midbottom
+        pos += self.vel + 0.5 * self.acc
 
-        self.rect.midbottom = self.pos
+        if pos.x > WIDTH:
+            pos.x = 0
+        if pos.x < 0:
+            pos.x = WIDTH
+
+        self.rect.midbottom = pos
 
     def jump(self):
         hits = pygame.sprite.spritecollide(self, platforms, False)
@@ -68,25 +70,19 @@ class Player(pygame.sprite.Sprite):
 
     def update(self):
         hits = pygame.sprite.spritecollide(self, platforms, False)
-        if self.vel.y <= 0 or not hits:
-            return
-        
-        if len(hits) > 1:
-            assert False
-        
-        collidedPlatform = hits[0]
-
-        if self.pos.y < collidedPlatform.rect.top:
-            print(collidedPlatform.rect.top, self.pos.y)
-            self.pos.y = collidedPlatform.rect.bottom - 1
-            self.vel.y = 0
+        if self.vel.y < 0:
+            # going up, I can only collide from below
+            for collidedPlatform in hits:
+                self.rect.top = collidedPlatform.rect.bottom + 1
+                self.vel.y = 0
+        elif self.vel.y > 0:
+            # going down
+            for collidedPlatform in hits:
+                self.rect.bottom = collidedPlatform.rect.top + 1
+                self.vel.y = 0
+                self.jumping = False
         else:
-            if collidedPlatform.point == True:
-                collidedPlatform.point = False
-                self.score += 1
-            self.pos.y = collidedPlatform.rect.top + 1
-            self.vel.y = 0
-            self.jumping = False
+            pass
 
     def gonnaFlip(self):
         self.surf.fill((255, 255, 255))
@@ -221,7 +217,7 @@ def end_game():
 
 
 def shift_level_up():
-    P1.pos.y += abs(P1.vel.y)
+    P1.rect.bottom += abs(P1.vel.y)
     for plat in platforms:
         plat.rect.y += abs(P1.vel.y)
         if plat.rect.top >= HEIGHT:
@@ -230,7 +226,7 @@ def shift_level_up():
 
 def main():
     global flipIn
-    init_platform(random.randint(4, 5))
+    init_platform(20)
 
     while True:
         flipIn -= 1
