@@ -42,6 +42,13 @@ class Player(pygame.sprite.Sprite):
             self.acc.x = -ACC * (-1 if self.flipped else 1)
         if pressed_keys[K_RIGHT]:
             self.acc.x = ACC * (-1 if self.flipped else 1)
+        if pressed_keys[K_SPACE]:
+            self.jump()
+
+        for event in pygame.event.get():
+          if event.type == pygame.KEYUP:
+            if event.key == pygame.K_SPACE:
+                P1.cancel_jump()
 
         self.acc.x += self.vel.x * FRIC
         self.vel += self.acc
@@ -205,9 +212,6 @@ def keyboard_events():
             pygame.quit()
             sys.exit()
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE:
-                P1.jump()
-
             pressed_keys = pygame.key.get_pressed()
             if pressed_keys[K_x]:
                 pygame.quit()
