@@ -13,6 +13,7 @@ PLAYER_HORIZONTAL_VEL = 2
 FRIC = -0.25
 FPS = 60
 GRAVITY = 0.5
+VMAX = 4
 
 FramePerSec = pygame.time.Clock()
 
@@ -30,7 +31,7 @@ class Player(pygame.sprite.Sprite):
         self.rect.center = (WIDTH / 2, HEIGHT / 2)
 
         self.vel = vec(0, 0)
-        self.acc = vec(0, 0)
+        self.acc = vec(0, GRAVITY)
         self.jumping = False
         self.score = 0
         self.flipped = False
@@ -56,7 +57,7 @@ class Player(pygame.sprite.Sprite):
             else:
                 pass
 
-        self.acc = vec(0, GRAVITY)
+        
         pressed_keys = pygame.key.get_pressed()
 
         if pressed_keys[K_LEFT]:
@@ -79,6 +80,9 @@ class Player(pygame.sprite.Sprite):
         # print(self.acc)
         self.vel.x = 0
         self.vel += self.acc
+
+        if self.flipped and self.vel.y < VMAX:
+            self.vel.y = -VMAX
 
         if self.collided_platform:
             self.vel.x += self.collided_platform.vel.x
@@ -109,6 +113,7 @@ class Player(pygame.sprite.Sprite):
             self.surf.fill((0, 255, 255))
         else:
             self.surf.fill((255, 255, 0))
+        self.acc = vec(0, GRAVITY * (-1 if self.flipped else 1))
 
 
 class platform(pygame.sprite.Sprite):
@@ -248,7 +253,7 @@ def main():
             P1.gonnaFlip()
 
         if flipIn == 0:
-            # flip_state()
+            flip_state()
             flipIn = 400 + random.randint(-60, 60)
 
         keyboard_events()
