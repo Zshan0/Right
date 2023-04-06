@@ -13,6 +13,7 @@ ACC = 0.5
 FRIC = -0.25
 FPS = 60
 FALL_VEL = 3
+GRAVITY = 0.5
 
 FramePerSec = pygame.time.Clock()
 
@@ -34,6 +35,7 @@ class Player(pygame.sprite.Sprite):
         self.jumping = False
         self.score = 0
         self.flipped = False
+        self.collided_platform = None
 
     def move(self):
         pressed_keys = pygame.key.get_pressed()
@@ -42,23 +44,35 @@ class Player(pygame.sprite.Sprite):
             self.acc.x = -ACC * (-1 if self.flipped else 1)
         if pressed_keys[K_RIGHT]:
             self.acc.x = ACC * (-1 if self.flipped else 1)
-        if pressed_keys[K_SPACE]:
-            self.jump()
+        if pressed_keys[K_SPACE] and len(hits) > 0 and not self.jumping:
+            # jumping
+            self.jumping = True
+            self.vel.y = -15
+            self.collided_platform = None
 
         for event in pygame.event.get():
-          if event.type == pygame.KEYUP:
-            if event.key == pygame.K_SPACE:
-                P1.cancel_jump()
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_SPACE:
+                    P1.cancel_jump()
 
+        # no friction for now
         self.acc.x += self.vel.x * FRIC
+        if abs(self.vel.x) <= 0.01:
+            self.vel.x = 0
+            
         self.vel += self.acc
 
         # Capping velocity
         if self.flipped and self.vel.y < -FALL_VEL:
             self.vel.y = -FALL_VEL
+        # enable with friction
+
+        
+        if self.collided_platform:
+            self.vel.x += self.collided_platform.vel.x
 
         pos = self.rect.midbottom
-        pos += self.vel + 0.5 * self.acc
+        pos += self.vel
 
         if pos.x > WIDTH:
             pos.x = 0
@@ -67,35 +81,10 @@ class Player(pygame.sprite.Sprite):
 
         self.rect.midbottom = pos
 
-    def jump(self):
-        hits = pygame.sprite.spritecollide(self, platforms, False)
-        if hits and not self.jumping:
-            self.jumping = True
-            self.vel.y = -15
-
     def cancel_jump(self):
         if self.jumping:
             if self.vel.y < -3:
                 self.vel.y = -3
-
-    def update(self):
-        hits = pygame.sprite.spritecollide(self, platforms, False)
-        if len(hits) == 0:
-            return
-
-        if self.vel.y < 0:
-            # going up, I can only collide from below
-            for collidedPlatform in hits:
-                self.rect.top = collidedPlatform.rect.bottom + 1
-                self.vel.y = 0
-        elif self.vel.y > 0:
-            # going down
-            for collidedPlatform in hits:
-                self.rect.bottom = collidedPlatform.rect.top + 1
-                self.vel.y = 0
-                self.jumping = False
-        else:
-            pass
 
     def gonnaFlip(self):
         self.surf.fill((255, 255, 255))
@@ -118,17 +107,17 @@ class platform(pygame.sprite.Sprite):
         self.rect = self.surf.get_rect(
             center=(random.randint(0, WIDTH - 10), random.randint(0, HEIGHT - 30))
         )
-        self.speed = random.randint(-1, 1)
+        self.vel = vec(random.randint(-1, 1), 0)
 
         self.point = True
         self.moving = True
 
     def move(self):
         if self.moving == True:
-            self.rect.move_ip(self.speed, 0)
-            if self.speed > 0 and self.rect.left > WIDTH:
+            self.rect.move_ip(self.vel)
+            if self.vel.x > 0 and self.rect.left > WIDTH:
                 self.rect.right = 0
-            if self.speed < 0 and self.rect.right < 0:
+            if self.vel.x < 0 and self.rect.right < 0:
                 self.rect.left = WIDTH
 
 
@@ -255,8 +244,8 @@ def main():
             flip_state()
             flipIn = 400 + random.randint(-60, 60)
 
-        P1.update()
         keyboard_events()
+        [entity.move() for entity in all_sprites]
 
         if P1.rect.top > HEIGHT:
             end_game()
@@ -272,7 +261,6 @@ def main():
 
         for entity in all_sprites:
             displaysurface.blit(entity.surf, entity.rect)
-            entity.move()
 
         pygame.display.update()
         FramePerSec.tick(FPS)
