@@ -17,7 +17,7 @@ FALL_VEL = 3
 FramePerSec = pygame.time.Clock()
 
 displaysurface = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Game")
+pygame.display.set_caption("Right?")
 
 
 class Player(pygame.sprite.Sprite):
@@ -73,6 +73,9 @@ class Player(pygame.sprite.Sprite):
 
     def update(self):
         hits = pygame.sprite.spritecollide(self, platforms, False)
+        if len(hits) == 0:
+            return
+
         if self.vel.y < 0:
             # going up, I can only collide from below
             for collidedPlatform in hits:
@@ -174,6 +177,8 @@ def init():
 
     init_platform(20)
 
+PT1.moving = False
+PT1.point = False 
 
 # GAME STATES
 INVERSE = False
@@ -244,12 +249,12 @@ def main():
         if flipIn == 0:
             flipIn = 300
             flip_state()
+            flipIn = 400 + random.randint(-60, 60)
 
         P1.update()
         keyboard_events()
 
         if P1.rect.top > HEIGHT:
-            # player dies.
             end_game()
 
         if P1.rect.top <= HEIGHT / 3:
@@ -258,7 +263,7 @@ def main():
         plat_gen()
         displaysurface.fill((0, 0, 0))
         f = pygame.font.SysFont("Verdana", 20)
-        g = f.render(str(P1.score), True, (123, 255, 0))
+        g = f.render(str(P1.rect.bottom), True, (123, 255, 0))
         displaysurface.blit(g, (WIDTH / 2, 10))
 
         for entity in all_sprites:
