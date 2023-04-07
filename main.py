@@ -29,6 +29,7 @@ FramePerSec = pygame.time.Clock()
 displaysurface = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Right?")
 
+
 def min_sep_vec(rec1, rec2):
     # Left object is rec1
     if rec1.left > rec2.left:
@@ -54,10 +55,7 @@ def min_sep_vec(rec1, rec2):
     return (x_gap, y_gap)
 
 
-
-
 class Player(pygame.sprite.Sprite):
-
     def __init__(self):
         super().__init__()
         # self.image = pygame.image.load("character.png")
@@ -91,14 +89,9 @@ class Player(pygame.sprite.Sprite):
             elif self.vel.y > 0:
                 # going down, I can only collide from above
                 for collided_platform in hits:
-                    print(self.pos.y, (collided_platform.pos.y - PLATFORM_HEIGHT))
-                    if collided_platform != self.collided_platform:
-                        print(f"top")
-                    
-                    msv = min_sep_vec(self.rect, collided_platform.rect) 
-                    print(f"msv: {msv}")
-
-                    if msv[0] < msv[1]:
+                    msv = min_sep_vec(self.rect, collided_platform.rect)
+                    # discourage pushing the player off
+                    if msv[0] < msv[1] * 0.9:
                         self.pos.y = collided_platform.rect.bottom + PLAYER_HEIGHT + 1
                         self.vel.y = 0
                         continue
@@ -217,7 +210,7 @@ top_platforms = []
 
 # GAME STATES
 INVERSE = False
-flipIn = 100 
+flipIn = 100
 
 
 def flip_state():
@@ -230,7 +223,7 @@ def add_platforms():
     """
     Uses top_platforms to decide next layer.
     """
-    count = 1
+    count = 2
 
     global top_platforms
     prev_height = top_platforms[0].pos.y
@@ -304,6 +297,7 @@ def shift_level_up(v):
         if plat.pos.y >= HEIGHT:
             plat.kill()
 
+
 BG1 = (20, 40, 60)
 BG2 = (60, 40, 20)
 
@@ -314,7 +308,10 @@ def bg_color():
         flip = 100 - flipIn
     else:
         flip = flipIn
-    return tuple(map(lambda x: int(x[0] * flip/100 + x[1] * (1 - flip/100)), zip(BG1, BG2)))
+    return tuple(
+        map(lambda x: int(x[0] * flip / 100 + x[1] * (1 - flip / 100)), zip(BG1, BG2))
+    )
+
 
 def main():
     global flipIn
@@ -326,9 +323,9 @@ def main():
         flipIn -= flipDec
 
         if flipIn <= 0:
-            # flip_state()
+            flip_state()
             flipIn = 100
-            flipDec = random.randint(2, 3) // 10
+            flipDec = random.randint(2, 3) / 10
 
         keyboard_events()
         [entity.move() for entity in all_sprites]
@@ -337,13 +334,15 @@ def main():
             end_game()
 
         if PLAYER_STARTED:
-            camera_speed = MIN_CAMERA_SPEED + (MAX_CAMERA_SPEED - MIN_CAMERA_SPEED)*(HEIGHT - P1.rect.bottom)/(HEIGHT)
+            camera_speed = MIN_CAMERA_SPEED + (MAX_CAMERA_SPEED - MIN_CAMERA_SPEED) * (
+                HEIGHT - P1.rect.bottom
+            ) / (HEIGHT)
             shift_level_up(camera_speed)
 
         add_platforms()
 
         P1.update_rect()
-        
+
         displaysurface.fill(bg_color())
 
         f = pygame.font.SysFont("Verdana", 20)
