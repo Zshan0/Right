@@ -204,7 +204,7 @@ def check(platform, groupies):
                 return True
 
 
-P1 = Player()
+P1 = Player() 
 all_sprites = pygame.sprite.Group()
 platforms = pygame.sprite.Group()
 top_platforms = []
@@ -212,6 +212,8 @@ top_platforms = []
 # GAME STATES
 INVERSE = False
 flipIn = 100
+flipDec = 0.2
+
 
 
 def flip_state():
@@ -248,7 +250,17 @@ def add_platforms():
     top_platforms = new_plats
 
 
-def init_platform():
+def init():
+    global INVERSE, all_sprites, platforms, top_platforms, P1, PLAYER_STARTED
+    # reset the game state
+    all_sprites = pygame.sprite.Group()
+    platforms = pygame.sprite.Group()
+    top_platforms = []
+    INVERSE = False
+    PLAYER_STARTED = False
+
+    P1 = Player()
+    all_sprites.add(P1)
     PT1 = Platform(
         size=(WIDTH - 10, PLATFORM_HEIGHT),
         position=(WIDTH // 2, HEIGHT - 10),
@@ -257,7 +269,6 @@ def init_platform():
     platforms.add(PT1)
     all_sprites.add(PT1)
     top_platforms.append(PT1)
-
     add_platforms()
 
 
@@ -280,12 +291,12 @@ def keyboard_events():
 def end_game():
     for entity in all_sprites:
         entity.kill()
-        time.sleep(1)
-        displaysurface.fill((255, 0, 0))
-        pygame.display.update()
-        time.sleep(1)
-        pygame.quit()
-        sys.exit()
+        # time.sleep(1)
+        # displaysurface.fill((255, 0, 0))
+        # pygame.display.update()
+        # time.sleep(1)
+        # pygame.quit()
+        # sys.exit()
 
 
 def shift_level_up(v):
@@ -302,7 +313,6 @@ def shift_level_up(v):
 BG1 = (20, 40, 60)
 BG2 = (60, 40, 20)
 
-
 def bg_color():
     global flipIn
     if INVERSE:
@@ -313,14 +323,9 @@ def bg_color():
         map(lambda x: int(x[0] * flip / 100 + x[1] * (1 - flip / 100)), zip(BG1, BG2))
     )
 
-
-def main():
-    global flipIn
-    all_sprites.add(P1)
-    init_platform()
-
-    flipDec = 0.2
-    while True:
+def game_loop():
+    global flipIn, flipDec
+    while True: 
         flipIn -= flipDec
 
         if flipIn <= 0:
@@ -333,6 +338,7 @@ def main():
 
         if P1.rect.top > HEIGHT:
             end_game()
+            return
 
         if PLAYER_STARTED:
             camera_speed = MIN_CAMERA_SPEED + (MAX_CAMERA_SPEED - MIN_CAMERA_SPEED) * (
@@ -355,6 +361,11 @@ def main():
 
         pygame.display.update()
         FramePerSec.tick(FPS)
+
+def main():
+    while True:
+        init()
+        game_loop()
 
 
 if __name__ == "__main__":
