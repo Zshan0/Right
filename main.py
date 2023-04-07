@@ -19,7 +19,9 @@ PLAYER_HEIGHT = 30
 PLATFORM_HEIGHT = 13
 PLATFORM_VEL = 2
 MAX_PLATFORM_WIDTH = 100
-
+MIN_CAMERA_SPEED = 0.3
+MAX_CAMERA_SPEED = 5
+PLAYER_STARTED = False
 JUMP_HEIGHT = JUMP_SPEED**2 / (2 * GRAVITY) - PLATFORM_HEIGHT
 
 FramePerSec = pygame.time.Clock()
@@ -55,6 +57,7 @@ def min_sep_vec(rec1, rec2):
 
 
 class Player(pygame.sprite.Sprite):
+
     def __init__(self):
         super().__init__()
         # self.image = pygame.image.load("character.png")
@@ -71,6 +74,11 @@ class Player(pygame.sprite.Sprite):
 
     def move(self):
         # handle collisions
+        global PLAYER_STARTED
+
+        if not PLAYER_STARTED and self.pos.y < HEIGHT * 0.5:
+            PLAYER_STARTED = True
+
         hits = pygame.sprite.spritecollide(self, platforms, False)
         if len(hits) != 0:
             if self.vel.y < 0:
@@ -286,10 +294,13 @@ def end_game():
         sys.exit()
 
 
-def shift_level_up():
-    P1.pos.y += abs(P1.vel.y)
+def shift_level_up(v):
+    """
+    Takes input the camera speed and moves the camera by that amount in each frame
+    """
+    P1.pos.y += v
     for plat in platforms:
-        plat.pos.y += abs(P1.vel.y)
+        plat.pos.y += v
         if plat.pos.y >= HEIGHT:
             plat.kill()
 
@@ -325,8 +336,10 @@ def main():
         if P1.rect.top > HEIGHT:
             end_game()
 
-        if P1.rect.top <= HEIGHT / 3:
-            shift_level_up()
+        if PLAYER_STARTED:
+            camera_speed = MIN_CAMERA_SPEED + (MAX_CAMERA_SPEED - MIN_CAMERA_SPEED)*(HEIGHT - P1.rect.bottom)/(HEIGHT)
+            shift_level_up(camera_speed)
+
         add_platforms()
 
         P1.update_rect()
