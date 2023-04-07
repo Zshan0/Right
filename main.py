@@ -15,7 +15,8 @@ FPS = 60
 GRAVITY = 0.5
 VMAX = 4
 JUMP_SPEED = 15
-JUMP_HEIGHT = JUMP_SPEED**2 / (2 * GRAVITY * FPS)
+# JUMP_HEIGHT = JUMP_SPEED**2 / (2 * GRAVITY * FPS)
+JUMP_HEIGHT = JUMP_SPEED**2 / (2 * GRAVITY)
 PLAYER_HEIGHT = 30
 PLATFORM_HEIGHT = 10
 
@@ -48,7 +49,7 @@ class Player(pygame.sprite.Sprite):
                 # going up, I can only collide from below
                 for collided_platform in hits:
                     # set the player to top of the platform ig
-                    self.pos.y = collided_platform.rect.bottom - PLATFORM_HEIGHT
+                    self.pos.y = collided_platform.rect.bottom + PLAYER_HEIGHT + 1
                     self.vel.y = 0
 
             elif self.vel.y > 0:
@@ -182,7 +183,9 @@ def add_platforms():
     """
     Uses top_platforms to decide next layer.
     """
-    pl = Platform()
+    prev_height = top_platforms[0].pos.y
+    new_height = prev_height - (JUMP_HEIGHT + PLAYER_HEIGHT)
+    pl = Platform(position=(random.randint(0, WIDTH - 10), new_height), moving=True)
     platforms.add(pl)
     all_sprites.add(pl)
 
@@ -243,7 +246,7 @@ def main():
             P1.gonna_flip()
 
         if flipIn == 0:
-            flip_state()
+            # flip_state()
             flipIn = 400 + random.randint(-60, 60)
 
         keyboard_events()
