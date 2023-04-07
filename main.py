@@ -9,16 +9,15 @@ vec = pygame.math.Vector2  # 2 for two dimensional
 
 HEIGHT = 900
 WIDTH = 900
-PLAYER_HORIZONTAL_VEL = 2
+PLAYER_HORIZONTAL_VEL = 8
 FRIC = -0.25
 FPS = 60
 GRAVITY = 0.5
 VMAX = 4
 JUMP_SPEED = 15
-# JUMP_HEIGHT = JUMP_SPEED**2 / (2 * GRAVITY * FPS)
-JUMP_HEIGHT = JUMP_SPEED**2 / (2 * GRAVITY)
 PLAYER_HEIGHT = 30
 PLATFORM_HEIGHT = 10
+JUMP_HEIGHT = JUMP_SPEED**2 / (2 * GRAVITY) - PLATFORM_HEIGHT
 
 FramePerSec = pygame.time.Clock()
 
@@ -183,15 +182,32 @@ def add_platforms():
     """
     Uses top_platforms to decide next layer.
     """
+    global top_platforms
     prev_height = top_platforms[0].pos.y
-    new_height = prev_height - (JUMP_HEIGHT + PLAYER_HEIGHT)
-    pl = Platform(position=(random.randint(0, WIDTH - 10), new_height), moving=True)
+
+    # No more gen above
+    if prev_height < -50:
+        return
+
+    new_height = prev_height - random.randint(PLAYER_HEIGHT + 10, int(JUMP_HEIGHT) - 10)
+
+    size = (200, PLATFORM_HEIGHT)
+    position = (random.randint(0, WIDTH - 10), new_height)
+
+    pl = Platform(size=size, position=position, moving=True)
+
     platforms.add(pl)
     all_sprites.add(pl)
 
+    top_platforms = [pl]
+
 
 def init_platform():
-    PT1 = Platform(position=(WIDTH // 2, HEIGHT - 10), moving=False)
+    PT1 = Platform(
+        size=(WIDTH - 10, PLATFORM_HEIGHT),
+        position=(WIDTH // 2, HEIGHT - 10),
+        moving=False,
+    )
     platforms.add(PT1)
     all_sprites.add(PT1)
     top_platforms.append(PT1)
@@ -257,6 +273,7 @@ def main():
 
         if P1.rect.top <= HEIGHT / 3:
             shift_level_up()
+        add_platforms()
 
         P1.update_rect()
 
