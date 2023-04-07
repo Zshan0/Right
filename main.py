@@ -14,9 +14,9 @@ FRIC = -0.25
 FPS = 60
 GRAVITY = 0.5
 VMAX = 4
-JUMP_SPEED = 15
+JUMP_SPEED = 12
 PLAYER_HEIGHT = 30
-PLATFORM_HEIGHT = 10
+PLATFORM_HEIGHT = 13
 PLATFORM_VEL = 2
 MAX_PLATFORM_WIDTH = 100
 
@@ -26,6 +26,32 @@ FramePerSec = pygame.time.Clock()
 
 displaysurface = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Right?")
+
+def min_sep_vec(rec1, rec2):
+    # Left object is rec1
+    if rec1.left > rec2.left:
+        rec1, rec2 = rec2, rec1
+
+    x2, x3, x4 = rec1.right, rec2.left, rec2.right
+
+    if x3 <= x2 <= x4:
+        x_gap = x2 - x3
+    else:
+        x_gap = x4 - x3
+
+    if rec1.top > rec2.top:
+        rec1, rec2 = rec2, rec1
+
+    y2, y3, y4 = rec1.bottom, rec2.top, rec2.bottom
+
+    if y3 <= y2 <= y4:
+        y_gap = y2 - y3
+    else:
+        y_gap = y4 - y3
+
+    return (x_gap, y_gap)
+
+
 
 
 class Player(pygame.sprite.Sprite):
@@ -50,13 +76,25 @@ class Player(pygame.sprite.Sprite):
             if self.vel.y < 0:
                 # going up, I can only collide from below
                 for collided_platform in hits:
-                    # set the player to top of the platform ig
+                    # dont clip if player is lower than platform
                     self.pos.y = collided_platform.rect.bottom + PLAYER_HEIGHT + 1
                     self.vel.y = 0
 
             elif self.vel.y > 0:
                 # going down, I can only collide from above
                 for collided_platform in hits:
+                    print(self.pos.y, (collided_platform.pos.y - PLATFORM_HEIGHT))
+                    if collided_platform != self.collided_platform:
+                        print(f"top")
+                    
+                    msv = min_sep_vec(self.rect, collided_platform.rect) 
+                    print(f"msv: {msv}")
+
+                    if msv[0] < msv[1]:
+                        self.pos.y = collided_platform.rect.bottom + PLAYER_HEIGHT + 1
+                        self.vel.y = 0
+                        continue
+
                     self.pos.y = collided_platform.rect.top + 1
                     self.vel.y = 0
                     self.jumping = False
@@ -148,7 +186,7 @@ class Platform(pygame.sprite.Sprite):
             self.vel.x = -1 * self.vel.x
         if self.vel.x < 0 and self.pos.x - half_width < 0:
             self.vel.x = -1 * self.vel.x
-        self.rect.center = int(self.pos.x), int(self.pos.y)
+        self.rect.midbottom = int(self.pos.x), int(self.pos.y)
 
 
 def check(platform, groupies):
@@ -184,7 +222,7 @@ def add_platforms():
     """
     Uses top_platforms to decide next layer.
     """
-    count = 2
+    count = 1
 
     global top_platforms
     prev_height = top_platforms[0].pos.y
