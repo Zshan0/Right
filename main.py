@@ -17,6 +17,9 @@ VMAX = 4
 JUMP_SPEED = 15
 PLAYER_HEIGHT = 30
 PLATFORM_HEIGHT = 10
+PLATFORM_VEL = 2
+MAX_PLATFORM_WIDTH = 100
+
 JUMP_HEIGHT = JUMP_SPEED**2 / (2 * GRAVITY) - PLATFORM_HEIGHT
 
 FramePerSec = pygame.time.Clock()
@@ -83,33 +86,31 @@ class Player(pygame.sprite.Sprite):
                 if event.key == pygame.K_SPACE:
                     P1.cancel_jump()
 
-        if self.flipped and self.vel.y < VMAX:
-            self.vel.y = -VMAX
+        # if self.flipped and self.vel.y < VMAX:
+        #     self.vel.y = -VMAX
 
         if self.collided_platform:
             self.vel.x += self.collided_platform.vel.x
 
         self.pos += self.vel
         if self.pos.x > WIDTH:
-            self.pos.x = 0
-        if self.pos.x < 0:
             self.pos.x = WIDTH
+        if self.pos.x < 0:
+            self.pos.x = 0
 
     def cancel_jump(self):
         if self.jumping:
-            if self.vel.y < -3:
-                self.vel.y = -3
+            if self.vel.y < -10:
+                self.vel.y = -10
 
     def gonna_flip(self):
         self.surf.fill((255, 255, 255))
 
     def flip(self):
         self.flipped = not self.flipped
-        if self.flipped:
-            self.surf.fill((0, 255, 255))
-        else:
-            self.surf.fill((255, 255, 0))
-        self.gravity = vec(0, GRAVITY * (-1 if self.flipped else 1))
+        self.surf.fill((0, 255, 255))
+        self.gravity = vec(0, GRAVITY)
+        # self.gravity = vec(0, GRAVITY * (-1 if self.flipped else 1))
 
     def update_rect(self):
         self.rect.midbottom = int(self.pos.x), int(self.pos.y)
@@ -133,7 +134,7 @@ class Platform(pygame.sprite.Sprite):
         else:
             self.pos = vec(position)
         if moving:
-            self.vel = vec(random.choice([1, -1]) * 2, 0)
+            self.vel = vec(random.choice([1, -1]) * PLATFORM_VEL, 0)
         else:
             self.vel = vec(0, 0)
         self.moving = moving
@@ -142,10 +143,11 @@ class Platform(pygame.sprite.Sprite):
     def move(self):
         self.pos += self.vel
         half_width = self.rect.width / 2
+        # Platform bounce back
         if self.vel.x > 0 and self.pos.x + half_width > WIDTH:
-            self.pos.x = -half_width
+            self.vel.x = -1 * self.vel.x
         if self.vel.x < 0 and self.pos.x - half_width < 0:
-            self.pos.x = WIDTH + half_width
+            self.vel.x = -1 * self.vel.x
         self.rect.center = int(self.pos.x), int(self.pos.y)
 
 
@@ -169,7 +171,7 @@ top_platforms = []
 
 # GAME STATES
 INVERSE = False
-flipIn = 300
+flipIn = 100 
 
 
 def flip_state():
@@ -182,6 +184,8 @@ def add_platforms():
     """
     Uses top_platforms to decide next layer.
     """
+    count = 2
+
     global top_platforms
     prev_height = top_platforms[0].pos.y
 
@@ -190,16 +194,18 @@ def add_platforms():
         return
 
     new_height = prev_height - random.randint(PLAYER_HEIGHT + 10, int(JUMP_HEIGHT) - 10)
+    new_plats = []
 
-    size = (200, PLATFORM_HEIGHT)
-    position = (random.randint(0, WIDTH - 10), new_height)
+    for _ in range(count):
+        size = (MAX_PLATFORM_WIDTH, PLATFORM_HEIGHT)
+        position = (random.randint(0, WIDTH - 10), new_height)
+        pl = Platform(size=size, position=position, moving=True)
 
-    pl = Platform(size=size, position=position, moving=True)
+        platforms.add(pl)
+        all_sprites.add(pl)
+        new_plats.append(pl)
 
-    platforms.add(pl)
-    all_sprites.add(pl)
-
-    top_platforms = [pl]
+    top_platforms = new_plats
 
 
 def init_platform():
@@ -249,21 +255,31 @@ def shift_level_up():
         if plat.pos.y >= HEIGHT:
             plat.kill()
 
+BG1 = (20, 40, 60)
+BG2 = (60, 40, 20)
+
+
+def bg_color():
+    global flipIn
+    if INVERSE:
+        flip = 100 - flipIn
+    else:
+        flip = flipIn
+    return tuple(map(lambda x: int(x[0] * flip/100 + x[1] * (1 - flip/100)), zip(BG1, BG2)))
 
 def main():
     global flipIn
     all_sprites.add(P1)
     init_platform()
 
+    flipDec = 0.2
     while True:
-        flipIn -= 1
+        flipIn -= flipDec
 
-        if flipIn == 60:
-            P1.gonna_flip()
-
-        if flipIn == 0:
+        if flipIn <= 0:
             # flip_state()
-            flipIn = 400 + random.randint(-60, 60)
+            flipIn = 100
+            flipDec = random.randint(2, 3) // 10
 
         keyboard_events()
         [entity.move() for entity in all_sprites]
@@ -276,8 +292,9 @@ def main():
         add_platforms()
 
         P1.update_rect()
+        
+        displaysurface.fill(bg_color())
 
-        displaysurface.fill((0, 0, 0))
         f = pygame.font.SysFont("Verdana", 20)
         g = f.render(str(P1.rect.bottom), True, (123, 255, 0))
         displaysurface.blit(g, (WIDTH / 2, 10))
