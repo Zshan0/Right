@@ -66,7 +66,6 @@ class Player(pygame.sprite.Sprite):
         self.gravity = vec(0, GRAVITY)
         self.jumping = False
         self.score = 0
-        self.flipped = False
         self.collided_platform = None
         self.pos = vec(WIDTH // 2, HEIGHT - 20)
 
@@ -112,7 +111,7 @@ class Player(pygame.sprite.Sprite):
             self.vel.x = -PLAYER_HORIZONTAL_VEL
         if pressed_keys[K_RIGHT]:
             self.vel.x = PLAYER_HORIZONTAL_VEL
-        self.vel.x *= -1 if self.flipped else 1
+        self.vel.x *= -1 if INVERSE else 1
 
         if pressed_keys[K_SPACE] and len(hits) > 0 and not self.jumping:
             # jumping
@@ -146,8 +145,10 @@ class Player(pygame.sprite.Sprite):
         self.surf.fill((255, 255, 255))
 
     def flip(self):
-        self.flipped = not self.flipped
-        self.surf.fill((0, 255, 255))
+        if not INVERSE:
+            self.surf.fill((0, 255, 255))
+        else:
+            self.surf.fill((255, 255, 0))
         self.gravity = vec(0, GRAVITY)
         # self.gravity = vec(0, GRAVITY * (-1 if self.flipped else 1))
 
