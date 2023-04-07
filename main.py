@@ -9,13 +9,14 @@ vec = pygame.math.Vector2  # 2 for two dimensional
 
 HEIGHT = 900
 WIDTH = 900
-PLAYER_HORIZONTAL_VEL = 8
+PLAYER_HORIZONTAL_VEL = 5
 FRIC = -0.25
 FPS = 60
 GRAVITY = 0.5
 VMAX = 4
 JUMP_SPEED = 12
 PLAYER_HEIGHT = 30
+PLAYER_WIDTH = 30
 PLATFORM_HEIGHT = 13
 PLATFORM_VEL = 2
 MAX_PLATFORM_WIDTH = 100
@@ -52,14 +53,14 @@ def min_sep_vec(rec1, rec2):
     else:
         y_gap = y4 - y3
 
-    return (x_gap, y_gap)
+    return [x_gap, y_gap]
 
 
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
         # self.image = pygame.image.load("character.png")
-        self.surf = pygame.Surface((30, 30))
+        self.surf = pygame.Surface((PLAYER_WIDTH, PLAYER_HEIGHT))
         self.surf.fill((255, 255, 0))
         self.rect = self.surf.get_rect()
         self.vel = vec(0, 0)
@@ -76,23 +77,44 @@ class Player(pygame.sprite.Sprite):
         if not PLAYER_STARTED and self.pos.y < HEIGHT * 0.5:
             PLAYER_STARTED = True
 
+        x_freeze = False
+
         hits = pygame.sprite.spritecollide(self, platforms, False)
         if len(hits) != 0:
             if self.vel.y < 0:
+                print("UP")
                 # going up, I can only collide from below
                 for collided_platform in hits:
                     # dont clip if player is lower than platform
                     self.pos.y = collided_platform.rect.bottom + PLAYER_HEIGHT + 1
+                    # if self.pos.x < collided_platform.rect.center[0]:
+                    #     self.pos.x = collided_platform.rect.left - PLAYER_WIDTH / 2
+                    # else:
+                    #     self.pos.x = collided_platform.rect.right + PLAYER_WIDTH / 2
                     self.vel.y = 0
 
             elif self.vel.y > 0:
+                
                 # going down, I can only collide from above
                 for collided_platform in hits:
                     msv = min_sep_vec(self.rect, collided_platform.rect)
+                    # normalize the overlap in both directions
+                    msv[0] /= min(PLAYER_WIDTH, collided_platform.rect.width)
+                    msv[1] /= min(PLAYER_HEIGHT, collided_platform.rect.height)
+
+                    if collided_platform != self.collided_platform:
+                      print("DOWN")
+                      print(msv)
+                     
                     # discourage pushing the player off
-                    if msv[0] < msv[1] * 0.9:
-                        self.pos.y = collided_platform.rect.bottom + PLAYER_HEIGHT + 1
-                        self.vel.y = 0
+                    if msv[0] < msv[1]:
+                        print("Snapping to the side!")
+                        if self.pos.x < collided_platform.rect.center[0]:
+                            self.pos.x = collided_platform.rect.left - PLAYER_WIDTH / 2
+                        else:
+                            self.pos.x = collided_platform.rect.right + PLAYER_WIDTH / 2
+                        # self.vel.y = 0
+                        x_freeze = True
                         continue
 
                     self.pos.y = collided_platform.rect.top + 1
@@ -107,9 +129,9 @@ class Player(pygame.sprite.Sprite):
         self.vel = vec(0, self.vel.y)
         self.vel += self.gravity
 
-        if pressed_keys[K_LEFT]:
+        if pressed_keys[K_LEFT] and not x_freeze:
             self.vel.x = -PLAYER_HORIZONTAL_VEL
-        if pressed_keys[K_RIGHT]:
+        if pressed_keys[K_RIGHT] and not x_freeze:
             self.vel.x = PLAYER_HORIZONTAL_VEL
         self.vel.x *= -1 if INVERSE else 1
 
@@ -242,7 +264,7 @@ def add_platforms():
     new_plats = []
 
     positions_to_avoid = [(top_platform.pos.x, top_platform.rect.right - top_platform.rect.left) for top_platform in top_platforms]
-    print(positions_to_avoid)
+    # print(positions_to_avoid)
 
     for _ in range(count):
         size = (MAX_PLATFORM_WIDTH, PLATFORM_HEIGHT)
@@ -258,7 +280,7 @@ def add_platforms():
             x_pos = random.randint(0, WIDTH - 10)
 
         position = (random.randint(0, WIDTH - 10), new_height)
-        pl = Platform(size=size, position=position, moving=True)
+        pl = Platform(size=size, position=position, moving=False)
 
         positions_to_avoid.append((position[0], pl.rect.right-pl.rect.left))
         platforms.add(pl)
@@ -347,7 +369,7 @@ def game_loop():
         flipIn -= flipDec
 
         if flipIn <= 0:
-            flip_state()
+            # flip_state()
             flipIn = 100
             flipDec = random.randint(2, 3) / 10
 
