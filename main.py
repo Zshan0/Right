@@ -191,6 +191,9 @@ def flip_state():
 def add_platforms():
     """
     Uses top_platforms to decide next layer.
+    Platform height should be above the previous top platform's height
+    Platform width should be uniformly distributed on the length not occupied by the previous top
+    platforms and the current top platforms
     """
     count = 2
 
@@ -204,11 +207,26 @@ def add_platforms():
     new_height = prev_height - random.randint(PLAYER_HEIGHT + 10, int(JUMP_HEIGHT) - 10)
     new_plats = []
 
+    positions_to_avoid = [(top_platform.pos.x, top_platform.rect.right - top_platform.rect.left) for top_platform in top_platforms]
+    print(positions_to_avoid)
+
     for _ in range(count):
         size = (MAX_PLATFORM_WIDTH, PLATFORM_HEIGHT)
+        x_pos = positions_to_avoid[0][0]
+
+        def if_x_pos_within_positions_to_avoid(pos):
+            for position_to_avoid, width in positions_to_avoid:
+                if pos >= position_to_avoid and pos <= position_to_avoid + width:
+                    return True
+            return False
+
+        while if_x_pos_within_positions_to_avoid(x_pos):
+            x_pos = random.randint(0, WIDTH - 10)
+
         position = (random.randint(0, WIDTH - 10), new_height)
         pl = Platform(size=size, position=position, moving=True)
 
+        positions_to_avoid.append((position[0], pl.rect.right-pl.rect.left))
         platforms.add(pl)
         all_sprites.add(pl)
         new_plats.append(pl)
