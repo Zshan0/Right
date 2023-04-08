@@ -80,14 +80,14 @@ class Player(pygame.sprite.Sprite):
         collided_platform = hits[0]
 
         msv = min_sep_vec(self.rect, collided_platform.rect)
-        # print(msv)
+
         # normalize the overlap in both directions
         msv[0] /= min(PLAYER_WIDTH, collided_platform.rect.width)
         msv[1] /= min(PLAYER_HEIGHT, collided_platform.rect.height)
 
-        # if collided_platform != self.collided_platform:
-        #   logging.debug(msv)
-        #   logging.debug(f"\nvel:{self.vel.x}\npos:{self.pos.x}\n")
+        if collided_platform != self.collided_platform:
+          logging.debug(msv)
+          logging.debug(f"\nvel:{self.vel.x}\npos:{self.pos.x}\n")
 
         # x < y
         clip = msv[0] < msv[1]
@@ -125,9 +125,9 @@ class Player(pygame.sprite.Sprite):
             # if collided_platform != self.collided_platform:
             #   logging.debug("DOWN")
 
-            # if clip or self.pos.y> collided_platform.rect.bottom:
-            #     print("Clipped or too low")
-            #     return
+            if clip or self.pos.y> collided_platform.rect.bottom:
+                # print("Clipped or too low")
+                return
 
             # if collided_platform != self.collided_platform:
             #     logging.debug("Sending to top of the platform")
