@@ -64,7 +64,6 @@ class Player(pygame.sprite.Sprite):
         self.surf.fill((255, 255, 0))
         self.rect = self.surf.get_rect()
         self.vel = vec(0, 0)
-        self.gravity = vec(0, GRAVITY)
         self.jumping = False
         self.score = 0
         self.collided_platform = None
@@ -77,7 +76,7 @@ class Player(pygame.sprite.Sprite):
             PLAYER_STARTED = True
 
         self.vel = vec(0, self.vel.y)
-        self.vel += self.gravity
+        self.vel.y += GRAVITY
         
         pressed_keys = pygame.key.get_pressed()
         if pressed_keys[K_LEFT]:
@@ -113,51 +112,66 @@ class Player(pygame.sprite.Sprite):
 
         hits = pygame.sprite.spritecollide(self, platforms, False)
 
+        if len(hits) == 0:
+            return
         # TODO move platforms also
-        for collided_platform in hits:         
-            msv = min_sep_vec(self.rect, collided_platform.rect)
-            # print(msv)
-            # normalize the overlap in both directions
-            msv[0] /= min(PLAYER_WIDTH, collided_platform.rect.width)
-            msv[1] /= min(PLAYER_HEIGHT, collided_platform.rect.height)
-
-            # if collided_platform != self.collided_platform:
-            #   logging.debug(msv)
+        collided_platform = hits[0]
         
-            # x < y
-            clip = msv[0] < msv[1]
+        msv = min_sep_vec(self.rect, collided_platform.rect)
+        # print(msv)
+        # normalize the overlap in both directions
+        msv[0] /= min(PLAYER_WIDTH, collided_platform.rect.width)
+        msv[1] /= min(PLAYER_HEIGHT, collided_platform.rect.height)
 
-            if clip:
-                # logging.debug("clip!")
-                if self.pos.x < collided_platform.rect.center[0]:
-                    self.pos.x = collided_platform.rect.left - PLAYER_WIDTH / 2
-                else:
-                    self.pos.x = collided_platform.rect.right + PLAYER_WIDTH / 2
-            
-            if self.vel.y < 0:
-                # going up
-                # if collided_platform != self.collided_platform:
-                  # logging.debug("UP")
-                if not clip and msv[0] > 0.3:
-                  # print("Jerking to botom of the platform")
-                  self.vel.y = GRAVITY
-                  self.pos.y = collided_platform.rect.bottom + PLAYER_HEIGHT
+        # if collided_platform != self.collided_platform:
+        #   logging.debug(msv)
+        #   logging.debug(f"\nvel:{self.vel.x}\npos:{self.pos.x}\n")
+
+        
+        # x < y
+        clip = msv[0] < msv[1]
+        if clip:
+            # logging.debug("clip!")
+            if self.pos.x < collided_platform.rect.center[0]:
+                self.pos.x = collided_platform.rect.left - PLAYER_WIDTH / 2
             else:
-                # going down
-                # if collided_platform != self.collided_platform:
-                #   logging.debug("DOWN")
+                self.pos.x = collided_platform.rect.right + PLAYER_WIDTH / 2
+            
+            # if players and platform move in opposite directions then shift the player by the platforms velocity
+            if self.vel.x * collided_platform.vel.x < 0:
+                self.pos.x += collided_platform.vel.x
+            # logging.debug(f"changed pos:{self.pos.x}\n")
 
-                if clip or self.pos.y> collided_platform.rect.bottom:
-                    # print("Clipped or too low")
-                    continue
-                
-                # if collided_platform != self.collided_platform:
-                #     logging.debug("Sending to top of the platform")
+        
+        if self.vel.y < 0:
+            # going up
+            # if collided_platform != self.collided_platform:
+            #   logging.debug("UP")
 
-                self.pos.y = collided_platform.rect.top + 1
-                self.vel.y = 0
-                self.jumping = False
-                self.collided_platform = collided_platform 
+            # 
+            if not clip and \
+              msv[0] > PLAYER_HORIZONTAL_VEL/min(PLAYER_WIDTH, collided_platform.rect.width) and \
+              self.pos.y - PLAYER_HEIGHT > collided_platform.rect.top and \
+              self.pos.y > collided_platform.rect.bottom:
+              # print("Jerking to botom of the platform")
+              self.vel.y = GRAVITY
+              self.pos.y = collided_platform.rect.bottom + PLAYER_HEIGHT
+        else:
+            # going down
+            # if collided_platform != self.collided_platform:
+            #   logging.debug("DOWN")
+
+            # if clip or self.pos.y> collided_platform.rect.bottom:
+            #     print("Clipped or too low")
+            #     return
+            
+            # if collided_platform != self.collided_platform:
+            #     logging.debug("Sending to top of the platform")
+
+            self.pos.y = collided_platform.rect.top + 1
+            self.vel.y = 0
+            self.jumping = False
+            self.collided_platform = collided_platform
 
 
     def cancel_jump(self):
@@ -173,8 +187,6 @@ class Player(pygame.sprite.Sprite):
             self.surf.fill((0, 255, 255))
         else:
             self.surf.fill((255, 255, 0))
-        self.gravity = vec(0, GRAVITY)
-        # self.gravity = vec(0, GRAVITY * (-1 if self.flipped else 1))
 
     def update_rect(self):
         self.rect.midbottom = int(self.pos.x), int(self.pos.y)
@@ -312,6 +324,7 @@ def init():
     platforms.add(PT1)
     all_sprites.add(PT1)
     top_platforms.append(PT1)
+  
     add_platforms()
 
 
@@ -325,6 +338,9 @@ def keyboard_events():
             if pressed_keys[K_x]:
                 pygame.quit()
                 sys.exit()
+              
+            if pressed_keys[K_r]:
+                return -1
 
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_SPACE:
@@ -376,8 +392,12 @@ def game_loop():
             flipIn = 100
             flipDec = random.randint(2, 3) / 10
 
-        keyboard_events()
-        [entity.move() for entity in all_sprites]
+        if keyboard_events() == -1:
+            return
+        
+        # first move and update player
+        P1.move()
+        [entity.move() for entity in platforms]
 
         if P1.rect.top > HEIGHT:
             end_game()
