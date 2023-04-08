@@ -31,6 +31,7 @@ FramePerSec = pygame.time.Clock()
 displaysurface = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Right?")
 
+
 def min_sep_vec(rec1, rec2):
     # Left object is rec1
     if rec1.left > rec2.left:
@@ -77,7 +78,7 @@ class Player(pygame.sprite.Sprite):
 
         self.vel = vec(0, self.vel.y)
         self.vel.y += GRAVITY
-        
+
         pressed_keys = pygame.key.get_pressed()
         if pressed_keys[K_LEFT]:
             self.vel.x = -PLAYER_HORIZONTAL_VEL
@@ -96,7 +97,7 @@ class Player(pygame.sprite.Sprite):
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_SPACE:
                     P1.cancel_jump()
-        
+
         if self.collided_platform:
             self.vel.x += self.collided_platform.vel.x
 
@@ -116,7 +117,7 @@ class Player(pygame.sprite.Sprite):
             return
         # TODO move platforms also
         collided_platform = hits[0]
-        
+
         msv = min_sep_vec(self.rect, collided_platform.rect)
         # print(msv)
         # normalize the overlap in both directions
@@ -127,7 +128,6 @@ class Player(pygame.sprite.Sprite):
         #   logging.debug(msv)
         #   logging.debug(f"\nvel:{self.vel.x}\npos:{self.pos.x}\n")
 
-        
         # x < y
         clip = msv[0] < msv[1]
         if clip:
@@ -136,26 +136,29 @@ class Player(pygame.sprite.Sprite):
                 self.pos.x = collided_platform.rect.left - PLAYER_WIDTH / 2
             else:
                 self.pos.x = collided_platform.rect.right + PLAYER_WIDTH / 2
-            
+
             # if players and platform move in opposite directions then shift the player by the platforms velocity
             if self.vel.x * collided_platform.vel.x < 0:
                 self.pos.x += collided_platform.vel.x
             # logging.debug(f"changed pos:{self.pos.x}\n")
 
-        
         if self.vel.y < 0:
             # going up
             # if collided_platform != self.collided_platform:
             #   logging.debug("UP")
 
-            # 
-            if not clip and \
-              msv[0] > PLAYER_HORIZONTAL_VEL/min(PLAYER_WIDTH, collided_platform.rect.width) and \
-              self.pos.y - PLAYER_HEIGHT > collided_platform.rect.top and \
-              self.pos.y > collided_platform.rect.bottom:
-              # print("Jerking to botom of the platform")
-              self.vel.y = GRAVITY
-              self.pos.y = collided_platform.rect.bottom + PLAYER_HEIGHT
+            #
+            if (
+                not clip
+                and msv[0]
+                > PLAYER_HORIZONTAL_VEL
+                / min(PLAYER_WIDTH, collided_platform.rect.width)
+                and self.pos.y - PLAYER_HEIGHT > collided_platform.rect.top
+                and self.pos.y > collided_platform.rect.bottom
+            ):
+                # print("Jerking to botom of the platform")
+                self.vel.y = GRAVITY
+                self.pos.y = collided_platform.rect.bottom + PLAYER_HEIGHT
         else:
             # going down
             # if collided_platform != self.collided_platform:
@@ -164,7 +167,7 @@ class Player(pygame.sprite.Sprite):
             # if clip or self.pos.y> collided_platform.rect.bottom:
             #     print("Clipped or too low")
             #     return
-            
+
             # if collided_platform != self.collided_platform:
             #     logging.debug("Sending to top of the platform")
 
@@ -172,7 +175,6 @@ class Player(pygame.sprite.Sprite):
             self.vel.y = 0
             self.jumping = False
             self.collided_platform = collided_platform
-
 
     def cancel_jump(self):
         if self.jumping:
@@ -240,7 +242,7 @@ def check(platform, groupies):
                 return True
 
 
-P1 = Player() 
+P1 = Player()
 all_sprites = pygame.sprite.Group()
 platforms = pygame.sprite.Group()
 top_platforms = []
@@ -249,7 +251,6 @@ top_platforms = []
 INVERSE = False
 flipIn = 100
 flipDec = 0.2
-
 
 
 def flip_state():
@@ -277,7 +278,10 @@ def add_platforms():
     new_height = prev_height - random.randint(PLAYER_HEIGHT + 10, int(JUMP_HEIGHT) - 10)
     new_plats = []
 
-    positions_to_avoid = [(top_platform.pos.x, top_platform.rect.right - top_platform.rect.left) for top_platform in top_platforms]
+    positions_to_avoid = [
+        (top_platform.pos.x, top_platform.rect.right - top_platform.rect.left)
+        for top_platform in top_platforms
+    ]
     # print(positions_to_avoid)
 
     for _ in range(count):
@@ -296,7 +300,7 @@ def add_platforms():
         position = (random.randint(0, WIDTH - 10), new_height)
         pl = Platform(size=size, position=position, moving=False)
 
-        positions_to_avoid.append((position[0], pl.rect.right-pl.rect.left))
+        positions_to_avoid.append((position[0], pl.rect.right - pl.rect.left))
         platforms.add(pl)
         all_sprites.add(pl)
         new_plats.append(pl)
@@ -324,7 +328,7 @@ def init():
     platforms.add(PT1)
     all_sprites.add(PT1)
     top_platforms.append(PT1)
-  
+
     add_platforms()
 
 
@@ -338,7 +342,7 @@ def keyboard_events():
             if pressed_keys[K_x]:
                 pygame.quit()
                 sys.exit()
-              
+
             if pressed_keys[K_r]:
                 return -1
 
@@ -372,6 +376,7 @@ def shift_level_up(v):
 BG1 = (20, 40, 60)
 BG2 = (60, 40, 20)
 
+
 def bg_color():
     global flipIn
     if INVERSE:
@@ -382,9 +387,10 @@ def bg_color():
         map(lambda x: int(x[0] * flip / 100 + x[1] * (1 - flip / 100)), zip(BG1, BG2))
     )
 
+
 def game_loop():
     global flipIn, flipDec
-    while True: 
+    while True:
         flipIn -= flipDec
 
         if flipIn <= 0:
@@ -394,7 +400,7 @@ def game_loop():
 
         if keyboard_events() == -1:
             return
-        
+
         # first move and update player
         P1.move()
         [entity.move() for entity in platforms]
@@ -424,6 +430,7 @@ def game_loop():
 
         pygame.display.update()
         FramePerSec.tick(FPS)
+
 
 def main():
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
