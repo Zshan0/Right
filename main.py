@@ -71,46 +71,7 @@ class Player(pygame.sprite.Sprite):
         self.pos = vec(WIDTH // 2, HEIGHT - 30)
         self.update_rect()
 
-    def move(self):
-        global PLAYER_STARTED
-        if not PLAYER_STARTED and self.pos.y < HEIGHT * 0.5:
-            PLAYER_STARTED = True
-
-        self.vel = vec(0, self.vel.y)
-        self.vel.y += GRAVITY
-
-        pressed_keys = pygame.key.get_pressed()
-        if pressed_keys[K_LEFT]:
-            self.vel.x = -PLAYER_HORIZONTAL_VEL
-        if pressed_keys[K_RIGHT]:
-            self.vel.x = PLAYER_HORIZONTAL_VEL
-        self.vel.x *= -1 if INVERSE else 1
-
-        hits = pygame.sprite.spritecollide(self, platforms, False)
-        if pressed_keys[K_SPACE] and len(hits) > 0 and not self.jumping:
-            # jumping
-            self.jumping = True
-            self.vel.y = -JUMP_SPEED
-            self.collided_platform = None
-
-        for event in pygame.event.get():
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_SPACE:
-                    P1.cancel_jump()
-
-        if self.collided_platform:
-            self.vel.x += self.collided_platform.vel.x
-
-        self.vel.y = min(self.vel.y, PLAYER_TERMINAL_VEL)
-        self.pos += self.vel
-
-        if self.pos.x > WIDTH:
-            self.pos.x = WIDTH
-        if self.pos.x < 0:
-            self.pos.x = 0
-
-        self.update_rect()
-
+    def collision(self):
         hits = pygame.sprite.spritecollide(self, platforms, False)
 
         if len(hits) == 0:
@@ -175,6 +136,46 @@ class Player(pygame.sprite.Sprite):
             self.vel.y = 0
             self.jumping = False
             self.collided_platform = collided_platform
+
+    def move(self):
+        global PLAYER_STARTED
+        if not PLAYER_STARTED and self.pos.y < HEIGHT * 0.5:
+            PLAYER_STARTED = True
+
+        self.vel = vec(0, self.vel.y)
+        self.vel.y += GRAVITY
+
+        pressed_keys = pygame.key.get_pressed()
+        if pressed_keys[K_LEFT]:
+            self.vel.x = -PLAYER_HORIZONTAL_VEL
+        if pressed_keys[K_RIGHT]:
+            self.vel.x = PLAYER_HORIZONTAL_VEL
+        self.vel.x *= -1 if INVERSE else 1
+
+        hits = pygame.sprite.spritecollide(self, platforms, False)
+        if pressed_keys[K_SPACE] and len(hits) > 0 and not self.jumping:
+            # jumping
+            self.jumping = True
+            self.vel.y = -JUMP_SPEED
+            self.collided_platform = None
+
+        for event in pygame.event.get():
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_SPACE:
+                    P1.cancel_jump()
+
+        if self.collided_platform:
+            self.vel.x += self.collided_platform.vel.x
+
+        self.vel.y = min(self.vel.y, PLAYER_TERMINAL_VEL)
+        self.pos += self.vel
+
+        if self.pos.x > WIDTH:
+            self.pos.x = WIDTH
+        if self.pos.x < 0:
+            self.pos.x = 0
+
+        self.update_rect()
 
     def cancel_jump(self):
         if self.jumping:
@@ -404,6 +405,7 @@ def game_loop():
         # first move and update player
         P1.move()
         [entity.move() for entity in platforms]
+        P1.collision()
 
         if P1.rect.top > HEIGHT:
             end_game()
