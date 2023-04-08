@@ -11,6 +11,7 @@ vec = pygame.math.Vector2  # 2 for two dimensional
 HEIGHT = 900
 WIDTH = 900
 PLAYER_HORIZONTAL_VEL = 8
+PLAYER_TERMINAL_VEL = 10
 FPS = 60
 GRAVITY = 0.5
 VMAX = 4
@@ -100,6 +101,7 @@ class Player(pygame.sprite.Sprite):
         if self.collided_platform:
             self.vel.x += self.collided_platform.vel.x
 
+        self.vel.y = min(self.vel.y, PLAYER_TERMINAL_VEL)
         self.pos += self.vel
 
         if self.pos.x > WIDTH:
@@ -111,6 +113,7 @@ class Player(pygame.sprite.Sprite):
 
         hits = pygame.sprite.spritecollide(self, platforms, False)
 
+        # TODO move platforms also
         for collided_platform in hits:         
             msv = min_sep_vec(self.rect, collided_platform.rect)
             # print(msv)
@@ -118,33 +121,39 @@ class Player(pygame.sprite.Sprite):
             msv[0] /= min(PLAYER_WIDTH, collided_platform.rect.width)
             msv[1] /= min(PLAYER_HEIGHT, collided_platform.rect.height)
 
-            if collided_platform != self.collided_platform:
-              logging.debug(msv)
+            # if collided_platform != self.collided_platform:
+            #   logging.debug(msv)
         
             # x < y
             clip = msv[0] < msv[1]
 
             if clip:
-                logging.debug("clip!")
+                # logging.debug("clip!")
                 if self.pos.x < collided_platform.rect.center[0]:
                     self.pos.x = collided_platform.rect.left - PLAYER_WIDTH / 2
                 else:
                     self.pos.x = collided_platform.rect.right + PLAYER_WIDTH / 2
-                # self.vel.y = 0
             
             if self.vel.y < 0:
                 # going up
-                if collided_platform != self.collided_platform:
-                  logging.debug("UP")
-                if not clip:
+                # if collided_platform != self.collided_platform:
+                  # logging.debug("UP")
+                if not clip and msv[0] > 0.3:
+                  # print("Jerking to botom of the platform")
+                  self.vel.y = GRAVITY
                   self.pos.y = collided_platform.rect.bottom + PLAYER_HEIGHT
-                self.vel.y += GRAVITY
             else:
-                if clip:
-                    continue
                 # going down
-                if collided_platform != self.collided_platform:
-                  logging.debug("DOWN")
+                # if collided_platform != self.collided_platform:
+                #   logging.debug("DOWN")
+
+                if clip or self.pos.y> collided_platform.rect.bottom:
+                    # print("Clipped or too low")
+                    continue
+                
+                # if collided_platform != self.collided_platform:
+                #     logging.debug("Sending to top of the platform")
+
                 self.pos.y = collided_platform.rect.top + 1
                 self.vel.y = 0
                 self.jumping = False
@@ -244,7 +253,7 @@ def add_platforms():
     Platform width should be uniformly distributed on the length not occupied by the previous top
     platforms and the current top platforms
     """
-    count = 1
+    count = 2
 
     global top_platforms
     prev_height = top_platforms[0].pos.y
@@ -284,13 +293,14 @@ def add_platforms():
 
 
 def init():
-    global INVERSE, all_sprites, platforms, top_platforms, P1, PLAYER_STARTED
+    global INVERSE, all_sprites, platforms, top_platforms, P1, PLAYER_STARTED, flipIn
     # reset the game state
     all_sprites = pygame.sprite.Group()
     platforms = pygame.sprite.Group()
     top_platforms = []
     INVERSE = False
     PLAYER_STARTED = False
+    flipIn = 100
 
     P1 = Player()
     all_sprites.add(P1)
