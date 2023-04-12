@@ -270,17 +270,26 @@ def add_platforms():
     """
 
     global top_platforms
-  
+   
     prev_platform = top_platforms[-1]
     prev_height = prev_platform.pos.y
-
-    # No more gen above
     if prev_height < -50:
         return
 
-    new_height = prev_height - JUMP_HEIGHT * 0.75
-    max_horizontal_dist = JUMP_HEIGHT * 1.75 * PLAYER_HORIZONTAL_VEL / JUMP_SPEED
-    min_horizontal_dist = 40
+    new_layer = False
+    if len(top_platforms) >= 2 or random.random() < 0.5:
+        new_layer = True
+        prev_platform = random.choice(top_platforms)
+        new_height = prev_height - JUMP_HEIGHT * 0.75
+        min_horizontal_dist = MAX_PLATFORM_WIDTH * 0.5 * 0.9
+        max_horizontal_dist = JUMP_HEIGHT * 1.75 * PLAYER_HORIZONTAL_VEL / JUMP_SPEED
+    else:
+        new_layer = False
+        prev_platform = top_platforms[0]
+        new_height = prev_height
+        min_horizontal_dist = MAX_PLATFORM_WIDTH * 1.5 + MAX_PLATFORM_WIDTH / 2
+        max_horizontal_dist = JUMP_HEIGHT * 4 * PLAYER_HORIZONTAL_VEL / JUMP_SPEED
+    
 
     # make new platform on left
     r_start_left = max(0, prev_platform.pos.x - max_horizontal_dist)
@@ -303,10 +312,15 @@ def add_platforms():
     pos_x = (r_end - r_start) * random.random() + r_start
     position = (pos_x, new_height)
     size = (MAX_PLATFORM_WIDTH, PLATFORM_HEIGHT)
+
+    
     pl = Platform(size=size, position=position, moving=False)
     platforms.add(pl)
     all_sprites.add(pl)
-    top_platforms = [pl]
+    if new_layer:
+      top_platforms = [pl]
+    else:
+      top_platforms.append(pl)
 
 
 def init():
@@ -322,7 +336,7 @@ def init():
     P1 = Player()
     all_sprites.add(P1)
     PT1 = Platform(
-        size=(WIDTH - 10, PLATFORM_HEIGHT),
+        size=(WIDTH * 1.5, PLATFORM_HEIGHT),
         position=(WIDTH // 2, HEIGHT - 10),
         moving=False,
     )
