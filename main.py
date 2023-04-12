@@ -18,7 +18,7 @@ VMAX = 4
 JUMP_SPEED = 12
 PLAYER_HEIGHT = 30
 PLAYER_WIDTH = 30
-PLATFORM_HEIGHT = 13
+PLATFORM_HEIGHT = 15
 PLATFORM_VEL = 2
 MAX_PLATFORM_WIDTH = 100
 MIN_CAMERA_SPEED = 0.3
@@ -28,7 +28,7 @@ JUMP_HEIGHT = JUMP_SPEED**2 / (2 * GRAVITY) - PLATFORM_HEIGHT
 
 FramePerSec = pygame.time.Clock()
 
-displaysurface = pygame.display.set_mode((WIDTH, HEIGHT))
+displaysurface = pygame.display.set_mode((WIDTH, HEIGHT), flags=pygame.SCALED, vsync=1)
 pygame.display.set_caption("Right?")
 
 
@@ -85,9 +85,9 @@ class Player(pygame.sprite.Sprite):
         msv[0] /= min(PLAYER_WIDTH, collided_platform.rect.width)
         msv[1] /= min(PLAYER_HEIGHT, collided_platform.rect.height)
 
-        if collided_platform != self.collided_platform:
-          logging.debug(msv)
-          logging.debug(f"\nvel:{self.vel.x}\npos:{self.pos.x}\n")
+        # if collided_platform != self.collided_platform:
+        #   logging.debug(msv)
+        #   logging.debug(f"\nvel:{self.vel.x}\npos:{self.pos.x}\n")
 
         # x < y
         clip = msv[0] < msv[1]
@@ -109,6 +109,7 @@ class Player(pygame.sprite.Sprite):
             #   logging.debug("UP")
 
             #
+            # TODO use pos not rect
             if (
                 not clip
                 and msv[0]
@@ -267,46 +268,45 @@ def add_platforms():
     Platform width should be uniformly distributed on the length not occupied by the previous top
     platforms and the current top platforms
     """
-    count = 2
 
     global top_platforms
-    prev_height = top_platforms[0].pos.y
+  
+    prev_platform = top_platforms[-1]
+    prev_height = prev_platform.pos.y
 
     # No more gen above
     if prev_height < -50:
         return
 
-    new_height = prev_height - random.randint(PLAYER_HEIGHT + 10, int(JUMP_HEIGHT) - 10)
-    new_plats = []
+    new_height = prev_height - JUMP_HEIGHT * 0.75
+    max_horizontal_dist = JUMP_HEIGHT * 1.75 * PLAYER_HORIZONTAL_VEL / JUMP_SPEED
+    min_horizontal_dist = 40
 
-    positions_to_avoid = [
-        (top_platform.pos.x, top_platform.rect.right - top_platform.rect.left)
-        for top_platform in top_platforms
-    ]
-    # print(positions_to_avoid)
+    # make new platform on left
+    r_start_left = max(0, prev_platform.pos.x - max_horizontal_dist)
+    r_end_left = max(0, prev_platform.pos.x - min_horizontal_dist)
+    left_range= r_end_left - r_start_left
+    # make new platform on right
+    r_start_right = min(WIDTH, prev_platform.pos.x + min_horizontal_dist)
+    r_end_right = min(WIDTH, prev_platform.pos.x + max_horizontal_dist)
+    right_range = r_end_right - r_start_right
 
-    for _ in range(count):
-        size = (MAX_PLATFORM_WIDTH, PLATFORM_HEIGHT)
-        x_pos = positions_to_avoid[0][0]
+    total = left_range + right_range
 
-        def if_x_pos_within_positions_to_avoid(pos):
-            for position_to_avoid, width in positions_to_avoid:
-                if pos >= position_to_avoid and pos <= position_to_avoid + width:
-                    return True
-            return False
+    if random.random() < left_range / total:
+        r_end = r_end_left
+        r_start = r_start_left
+    else:
+        r_end = r_end_right
+        r_start = r_start_right
 
-        while if_x_pos_within_positions_to_avoid(x_pos):
-            x_pos = random.randint(0, WIDTH - 10)
-
-        position = (random.randint(0, WIDTH - 10), new_height)
-        pl = Platform(size=size, position=position, moving=False)
-
-        positions_to_avoid.append((position[0], pl.rect.right - pl.rect.left))
-        platforms.add(pl)
-        all_sprites.add(pl)
-        new_plats.append(pl)
-
-    top_platforms = new_plats
+    pos_x = (r_end - r_start) * random.random() + r_start
+    position = (pos_x, new_height)
+    size = (MAX_PLATFORM_WIDTH, PLATFORM_HEIGHT)
+    pl = Platform(size=size, position=position, moving=False)
+    platforms.add(pl)
+    all_sprites.add(pl)
+    top_platforms = [pl]
 
 
 def init():
@@ -395,7 +395,7 @@ def game_loop():
         flipIn -= flipDec
 
         if flipIn <= 0:
-            # flip_state()
+            flip_state()
             flipIn = 100
             flipDec = random.randint(2, 3) / 10
 
@@ -424,7 +424,7 @@ def game_loop():
         displaysurface.fill(bg_color())
 
         f = pygame.font.SysFont("Verdana", 20)
-        g = f.render(str(P1.rect.bottom), True, (123, 255, 0))
+        g = f.render(str(int(FramePerSec.get_fps())), True, (123, 255, 0))
         displaysurface.blit(g, (WIDTH / 2, 10))
 
         for entity in all_sprites:
