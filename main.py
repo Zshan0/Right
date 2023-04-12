@@ -24,6 +24,8 @@ MAX_PLATFORM_WIDTH = 100
 MIN_CAMERA_SPEED = 0.3
 MAX_CAMERA_SPEED = 5
 PLAYER_STARTED = False
+PHASE_MAX_LAYERS = 10
+phase_layers = 0
 JUMP_HEIGHT = JUMP_SPEED**2 / (2 * GRAVITY) - PLATFORM_HEIGHT
 
 FramePerSec = pygame.time.Clock()
@@ -200,7 +202,7 @@ class Platform(pygame.sprite.Sprite):
     def __init__(self, size=None, position=None, moving=True):
         super().__init__()
         if size is None:
-            self.surf = pygame.Surface((random.randint(50, 100), PLATFORM_HEIGHT))
+            self.surf = pygame.Surface((MAX_PLATFORM_WIDTH, PLATFORM_HEIGHT))
         else:
             self.surf = pygame.Surface(size)
 
@@ -261,31 +263,21 @@ def flip_state():
     INVERSE = not INVERSE
 
 
-def add_platforms():
-    """
-    Uses top_platforms to decide next layer.
-    Platform height should be above the previous top platform's height
-    Platform width should be uniformly distributed on the length not occupied by the previous top
-    platforms and the current top platforms
-    """
 
+def add_random_platforms():
     global top_platforms
-   
-    prev_platform = top_platforms[-1]
-    prev_height = prev_platform.pos.y
-    if prev_height < -50:
-        return
-
     new_layer = False
     if len(top_platforms) >= 2 or random.random() < 0.5:
         new_layer = True
         prev_platform = random.choice(top_platforms)
+        prev_height = prev_platform.pos.y
         new_height = prev_height - JUMP_HEIGHT * 0.75
         min_horizontal_dist = MAX_PLATFORM_WIDTH * 0.5 * 0.9
         max_horizontal_dist = JUMP_HEIGHT * 1.75 * PLAYER_HORIZONTAL_VEL / JUMP_SPEED
     else:
         new_layer = False
         prev_platform = top_platforms[0]
+        prev_height = prev_platform.pos.y
         new_height = prev_height
         min_horizontal_dist = MAX_PLATFORM_WIDTH * 1.5 + MAX_PLATFORM_WIDTH / 2
         max_horizontal_dist = JUMP_HEIGHT * 4 * PLAYER_HORIZONTAL_VEL / JUMP_SPEED
@@ -313,14 +305,76 @@ def add_platforms():
     position = (pos_x, new_height)
     size = (MAX_PLATFORM_WIDTH, PLATFORM_HEIGHT)
 
-    
     pl = Platform(size=size, position=position, moving=False)
     platforms.add(pl)
     all_sprites.add(pl)
+
     if new_layer:
       top_platforms = [pl]
     else:
       top_platforms.append(pl)
+
+    if new_layer:
+      return 1
+
+    return 0
+
+
+def add_staircase():
+  # logging.debug("Adding a new staircase")
+  global top_platforms, platforms, all_sprites
+  # start from a random platform
+  prev_platform = random.choice(top_platforms)
+  # direction is based off of the previous platfrom center
+
+  if prev_platform.pos.x < WIDTH / 2:
+      dir = -1 # left
+  else:
+      dir = 1 # right
+
+  pt_count = PHASE_MAX_LAYERS
+  for _ in range(pt_count):
+      prev_height = prev_platform.pos.y
+      new_height = prev_height - JUMP_HEIGHT * 0.5
+      x_center = prev_platform.pos.x + dir * MAX_PLATFORM_WIDTH / 1.2
+      if x_center + MAX_PLATFORM_WIDTH / 2 + 5 > WIDTH or x_center - MAX_PLATFORM_WIDTH / 2 - 5 < 0:
+          dir *= -1
+          x_center = prev_platform.pos.x + dir * MAX_PLATFORM_WIDTH / 1.2
+          
+      position = x_center, new_height
+      pl = Platform(size=(MAX_PLATFORM_WIDTH, PLATFORM_HEIGHT), position=position, moving=False)
+      # logging.debug("Adding a staircase platform")
+      platforms.add(pl)
+      all_sprites.add(pl)
+      prev_platform = pl
+
+  top_platforms = [pl]  
+
+  return pt_count
+        
+      
+
+current_phase = 0
+
+def add_platforms():
+    global top_platforms, phase_layers, current_phase
+    prev_platform = top_platforms[-1]
+    prev_height = prev_platform.pos.y
+    if prev_height < -50:
+        return
+    
+    
+    if phase_layers >= PHASE_MAX_LAYERS:
+        prev_phase = current_phase
+        while prev_phase == current_phase:
+          current_phase = random.randint(0, 1)
+        phase_layers = 0
+
+    if current_phase == 0:
+        phase_layers += add_staircase()
+    elif current_phase == 1:
+        phase_layers += add_random_platforms()
+    
 
 
 def init():
@@ -388,8 +442,8 @@ def shift_level_up(v):
             plat.kill()
 
 
-BG1 = (20, 40, 60)
-BG2 = (60, 40, 20)
+BG1 = (150, 0, 50)
+BG2 = (50, 0, 200)
 
 
 def bg_color():
