@@ -25,7 +25,7 @@ MIN_CAMERA_SPEED = 0.3
 MAX_CAMERA_SPEED = 5
 PLAYER_STARTED = False
 PHASE_MAX_LAYERS = 10
-phase_layers = 0
+phase_layers = PHASE_MAX_LAYERS + 1
 JUMP_HEIGHT = JUMP_SPEED**2 / (2 * GRAVITY) - PLATFORM_HEIGHT
 
 FramePerSec = pygame.time.Clock()
@@ -262,9 +262,33 @@ def flip_state():
     P1.flip()
     INVERSE = not INVERSE
 
+def add_stack(staggered=False):
+    global top_platforms
+    center = (random.random() * 0.33 + 0.33) * WIDTH
+    prev_plat = top_platforms[-1]
+
+    offsets = [0, 1, -1]
+    print(center)
+    for idx in range(PHASE_MAX_LAYERS):
+        for offset in offsets:
+          new_height = prev_plat.pos.y - JUMP_HEIGHT * 0.9
+          if staggered and idx % 2 == 0:
+              stagger = MAX_PLATFORM_WIDTH * 0.75 * 0.5
+          else:
+              stagger = 0
+
+          position = center + offset * (MAX_PLATFORM_WIDTH * 2 * 0.75) + stagger, new_height
+          pl = Platform(size=(MAX_PLATFORM_WIDTH * 0.75, PLATFORM_HEIGHT), position=position, moving=False)
+          platforms.add(pl)
+          all_sprites.add(pl)
+        prev_plat = pl
+
+    top_platforms = [pl]
+
+    return PHASE_MAX_LAYERS * len(offsets)
 
 
-def add_random_platforms():
+def add_random_platform():
     global top_platforms
     new_layer = False
     if len(top_platforms) >= 2 or random.random() < 0.5:
@@ -282,7 +306,6 @@ def add_random_platforms():
         min_horizontal_dist = MAX_PLATFORM_WIDTH * 1.5 + MAX_PLATFORM_WIDTH / 2
         max_horizontal_dist = JUMP_HEIGHT * 4 * PLAYER_HORIZONTAL_VEL / JUMP_SPEED
     
-
     # make new platform on left
     r_start_left = max(0, prev_platform.pos.x - max_horizontal_dist)
     r_end_left = max(0, prev_platform.pos.x - min_horizontal_dist)
@@ -340,7 +363,7 @@ def add_staircase():
       if x_center + MAX_PLATFORM_WIDTH / 2 + 5 > WIDTH or x_center - MAX_PLATFORM_WIDTH / 2 - 5 < 0:
           dir *= -1
           x_center = prev_platform.pos.x + dir * MAX_PLATFORM_WIDTH / 1.2
-          
+
       position = x_center, new_height
       pl = Platform(size=(MAX_PLATFORM_WIDTH, PLATFORM_HEIGHT), position=position, moving=False)
       # logging.debug("Adding a staircase platform")
@@ -363,17 +386,20 @@ def add_platforms():
     if prev_height < -50:
         return
     
-    
     if phase_layers >= PHASE_MAX_LAYERS:
         prev_phase = current_phase
         while prev_phase == current_phase:
-          current_phase = random.randint(0, 1)
+          current_phase = random.randint(0, 3)
         phase_layers = 0
 
     if current_phase == 0:
         phase_layers += add_staircase()
     elif current_phase == 1:
-        phase_layers += add_random_platforms()
+        phase_layers += add_random_platform()
+    elif current_phase == 2:
+        phase_layers += add_stack()
+    elif current_phase == 3:
+        phase_layers += add_stack(staggered=True)
     
 
 
