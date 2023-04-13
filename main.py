@@ -25,8 +25,11 @@ MIN_CAMERA_SPEED = 0.3
 MAX_CAMERA_SPEED = 5
 PLAYER_STARTED = False
 PHASE_MAX_LAYERS = 10
+MOVE_BY = 3
 phase_layers = PHASE_MAX_LAYERS + 1
 JUMP_HEIGHT = JUMP_SPEED**2 / (2 * GRAVITY) - PLATFORM_HEIGHT
+PLATFORM_HEALTH = 50
+DAMAGE_THRESHOLD = PLATFORM_HEALTH / 2
 
 FramePerSec = pygame.time.Clock()
 
@@ -80,6 +83,8 @@ class Player(pygame.sprite.Sprite):
             return
         # TODO move platforms also
         collided_platform = hits[0]
+
+        
 
         msv = min_sep_vec(self.rect, collided_platform.rect)
 
@@ -138,6 +143,14 @@ class Player(pygame.sprite.Sprite):
             self.pos.y = collided_platform.rect.top + 1
             self.vel.y = 0
             self.jumping = False
+                    # decrease the health of the platform every time it is in contact
+            collided_platform.health -= 1
+            
+            if collided_platform.health <= 0:
+                collided_platform.kill()
+            if not collided_platform.half_broken and collided_platform.health <= DAMAGE_THRESHOLD:
+              collided_platform.change_color()
+
             self.collided_platform = collided_platform
 
     def move(self):
@@ -205,6 +218,9 @@ class Platform(pygame.sprite.Sprite):
             self.surf = pygame.Surface((MAX_PLATFORM_WIDTH, PLATFORM_HEIGHT))
         else:
             self.surf = pygame.Surface(size)
+          
+        self.health = PLATFORM_HEALTH
+        self.half_broken = False
 
         # color
         self.surf.fill((0, 255, 0))
@@ -221,6 +237,11 @@ class Platform(pygame.sprite.Sprite):
             self.vel = vec(0, 0)
         self.moving = moving
         self.point = True
+      
+    def change_color(self):
+        self.surf.fill((255, 0, 0))
+        self.half_broken = True
+          
 
     def move(self):
         self.pos += self.vel
@@ -420,6 +441,7 @@ def init():
         position=(WIDTH // 2, HEIGHT - 10),
         moving=False,
     )
+    PT1.health = 100 * PLATFORM_HEALTH
     platforms.add(PT1)
     all_sprites.add(PT1)
     top_platforms.append(PT1)
@@ -504,12 +526,12 @@ def game_loop():
         if P1.rect.top > HEIGHT:
             end_game()
             return
-
+        
         if PLAYER_STARTED:
-            camera_speed = MIN_CAMERA_SPEED + (MAX_CAMERA_SPEED - MIN_CAMERA_SPEED) * (
+          camera_speed = MIN_CAMERA_SPEED + (MAX_CAMERA_SPEED - MIN_CAMERA_SPEED) * (
                 HEIGHT - P1.rect.bottom
             ) / (HEIGHT)
-            shift_level_up(camera_speed)
+          shift_level_up(camera_speed)
 
         add_platforms()
 
