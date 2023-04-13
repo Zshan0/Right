@@ -42,6 +42,19 @@ displaysurface = pygame.display.set_mode((WIDTH, HEIGHT), flags=pygame.SCALED, v
 pygame.display.set_caption("Right?")
 
 
+def left(s):
+    return s.pos.x - s.width / 2
+
+def right(s):
+    return s.pos.x + s.width / 2
+
+def top(s):
+    return s.pos.y - s.height
+
+def bottom(s):
+    return s.pos.y
+
+
 def min_sep_vec(rec1, rec2):
     # Left object is rec1
     if rec1.left > rec2.left:
@@ -106,10 +119,10 @@ class Player(pygame.sprite.Sprite):
         clip = msv[0] < msv[1]
         if clip:
             # logging.debug("clip!")
-            if self.pos.x < collided_platform.rect.center[0]:
-                self.pos.x = collided_platform.rect.left - PLAYER_WIDTH / 2
+            if self.pos.x < collided_platform.pos.x:
+                self.pos.x = left(collided_platform) - PLAYER_WIDTH / 2
             else:
-                self.pos.x = collided_platform.rect.right + PLAYER_WIDTH / 2
+                self.pos.x = right(collided_platform) + PLAYER_WIDTH / 2
 
             # if players and platform move in opposite directions then shift the player by the platforms velocity
             if self.vel.x * collided_platform.vel.x < 0:
@@ -127,26 +140,26 @@ class Player(pygame.sprite.Sprite):
                 not clip
                 and msv[0]
                 > PLAYER_HORIZONTAL_VEL
-                / min(PLAYER_WIDTH, collided_platform.rect.width)
-                and self.pos.y - PLAYER_HEIGHT > collided_platform.rect.top
-                and self.pos.y > collided_platform.rect.bottom
+                / min(PLAYER_WIDTH, collided_platform.width)
+                and self.pos.y - PLAYER_HEIGHT > top(collided_platform)
+                and self.pos.y > bottom(collided_platform)
             ):
                 # print("Jerking to botom of the platform")
                 self.vel.y = GRAVITY
-                self.pos.y = collided_platform.rect.bottom + PLAYER_HEIGHT
+                self.pos.y = bottom(collided_platform) + PLAYER_HEIGHT
         else:
             # going down
             # if collided_platform != self.collided_platform:
             #   logging.debug("DOWN")
 
-            if clip or self.pos.y> collided_platform.rect.bottom:
+            if clip or self.pos.y> bottom(collided_platform):
                 # print("Clipped or too low")
                 return
 
             # if collided_platform != self.collided_platform:
             #     logging.debug("Sending to top of the platform")
 
-            self.pos.y = collided_platform.rect.top + 1
+            self.pos.y = top(collided_platform) + 1
             self.vel.y = 0
             self.jumping = False
                     # decrease the health of the platform every time it is in contact
@@ -232,12 +245,16 @@ class Platform(pygame.sprite.Sprite):
         else:
             self.surf = pygame.Surface(size)
           
+        self.height = self.surf.get_height()
+        self.width = self.surf.get_width()
         self.health = PLATFORM_HEALTH
         self.half_broken = False
 
         # color
         self.surf.fill((0, 255, 0))
         self.rect = self.surf.get_rect()
+        self.width = self.surf.get_width()
+        self.height = self.surf.get_height()
         if position is None:
             self.pos = vec(
                 (random.randint(0, WIDTH - 10), random.randint(0, HEIGHT - 30))
@@ -258,12 +275,15 @@ class Platform(pygame.sprite.Sprite):
 
     def move(self):
         self.pos += self.vel
-        half_width = self.rect.width / 2
+        half_width = self.width / 2
         # Platform bounce back
         if self.vel.x > 0 and self.pos.x + half_width > WIDTH:
             self.vel.x = -1 * self.vel.x
         if self.vel.x < 0 and self.pos.x - half_width < 0:
             self.vel.x = -1 * self.vel.x
+        self.update_rect()
+
+    def update_rect(self):
         self.rect.midbottom = int(self.pos.x), int(self.pos.y)
 
 
@@ -442,7 +462,7 @@ def add_platforms():
 
 
 def init():
-    global INVERSE, all_sprites, platforms, top_platforms, P1, PLAYER_STARTED, flipIn
+    global INVERSE, all_sprites, platforms, top_platforms, P1, PLAYER_STARTED, flipIn, DIFFICULTY
     # reset the game state
     all_sprites = pygame.sprite.Group()
     platforms = pygame.sprite.Group()
@@ -578,9 +598,10 @@ def game_loop():
         f = pygame.font.SysFont("Verdana", 20)
         g = f.render(str(int(FramePerSec.get_fps())), True, (123, 255, 0))
         displaysurface.blit(g, (WIDTH / 2, 10))
-
         for entity in all_sprites:
             displaysurface.blit(entity.surf, entity.rect)
+
+        # displaysurface.blit(pygame.transform.rotate(displaysurface, 180), (0, 0))
 
         pygame.display.update()
         FramePerSec.tick(FPS)
