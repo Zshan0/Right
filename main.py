@@ -35,7 +35,7 @@ DIFFICULTY = 0
 COLOR_NORMAL = (255, 255, 0)
 COLOR_FLIP = (0, 255, 255)
 WHITE = (255, 255, 255)
-COLOR_NEW = (255, 0 , 0)
+COLOR_NEW = (255, 0, 0)
 FramePerSec = pygame.time.Clock()
 
 displaysurface = pygame.display.set_mode((WIDTH, HEIGHT), flags=pygame.SCALED, vsync=1)
@@ -45,11 +45,14 @@ pygame.display.set_caption("Right?")
 def left(s):
     return s.pos.x - s.width / 2
 
+
 def right(s):
     return s.pos.x + s.width / 2
 
+
 def top(s):
     return s.pos.y - s.height
+
 
 def bottom(s):
     return s.pos.y
@@ -103,8 +106,6 @@ class Player(pygame.sprite.Sprite):
         # TODO move platforms also
         collided_platform = hits[0]
 
-        
-
         msv = min_sep_vec(self.rect, collided_platform.rect)
 
         # normalize the overlap in both directions
@@ -131,44 +132,34 @@ class Player(pygame.sprite.Sprite):
 
         if self.vel.y < 0:
             # going up
-            # if collided_platform != self.collided_platform:
-            #   logging.debug("UP")
-
-            #
-            # TODO use pos not rect
             if (
                 not clip
                 and msv[0]
-                > PLAYER_HORIZONTAL_VEL
-                / min(PLAYER_WIDTH, collided_platform.width)
+                > PLAYER_HORIZONTAL_VEL / min(PLAYER_WIDTH, collided_platform.width)
                 and self.pos.y - PLAYER_HEIGHT > top(collided_platform)
                 and self.pos.y > bottom(collided_platform)
             ):
-                # print("Jerking to botom of the platform")
                 self.vel.y = GRAVITY
                 self.pos.y = bottom(collided_platform) + PLAYER_HEIGHT
         else:
             # going down
-            # if collided_platform != self.collided_platform:
-            #   logging.debug("DOWN")
-
-            if clip or self.pos.y> bottom(collided_platform):
+            if clip or self.pos.y > bottom(collided_platform):
                 # print("Clipped or too low")
                 return
-
-            # if collided_platform != self.collided_platform:
-            #     logging.debug("Sending to top of the platform")
 
             self.pos.y = top(collided_platform) + 1
             self.vel.y = 0
             self.jumping = False
-                    # decrease the health of the platform every time it is in contact
+            # decrease the health of the platform every time it is in contact
             collided_platform.health -= 1
-            
+
             if collided_platform.health <= 0:
                 collided_platform.kill()
-            if not collided_platform.half_broken and collided_platform.health <= DAMAGE_THRESHOLD:
-              collided_platform.change_color()
+            if (
+                not collided_platform.half_broken
+                and collided_platform.health <= DAMAGE_THRESHOLD
+            ):
+                collided_platform.change_color()
 
             self.collided_platform = collided_platform
 
@@ -218,14 +209,14 @@ class Player(pygame.sprite.Sprite):
                 self.vel.y = -10
 
     def gonna_flip(self):
-      if not self.flash:
-        self.surf.fill((255, 255, 255))
-      else:
-        if INVERSE:
-            self.surf.fill(COLOR_FLIP)
+        if not self.flash:
+            self.surf.fill((255, 255, 255))
         else:
-            self.surf.fill(COLOR_NORMAL)
-      self.flash = not self.flash
+            if INVERSE:
+                self.surf.fill(COLOR_FLIP)
+            else:
+                self.surf.fill(COLOR_NORMAL)
+        self.flash = not self.flash
 
     def flip(self):
         if not INVERSE:
@@ -244,7 +235,7 @@ class Platform(pygame.sprite.Sprite):
             self.surf = pygame.Surface((MAX_PLATFORM_WIDTH, PLATFORM_HEIGHT))
         else:
             self.surf = pygame.Surface(size)
-          
+
         self.height = self.surf.get_height()
         self.width = self.surf.get_width()
         self.health = PLATFORM_HEALTH
@@ -267,11 +258,10 @@ class Platform(pygame.sprite.Sprite):
             self.vel = vec(0, 0)
         self.moving = moving
         self.point = True
-      
+
     def change_color(self):
         self.surf.fill((255, 0, 0))
         self.half_broken = True
-          
 
     def move(self):
         self.pos += self.vel
@@ -315,9 +305,11 @@ def flip_state():
     global INVERSE
     P1.flip()
     INVERSE = not INVERSE
-  
+
+
 def gonna_flip():
     P1.gonna_flip()
+
 
 def add_stack(staggered=False):
     global top_platforms
@@ -325,19 +317,25 @@ def add_stack(staggered=False):
     prev_plat = top_platforms[-1]
 
     offsets = [0, 1, -1]
-    # print(center)
     for idx in range(PHASE_MAX_LAYERS):
         for offset in offsets:
-          new_height = prev_plat.pos.y - JUMP_HEIGHT * min(0.9 + DIFFICULTY/10, 1)
-          if staggered and idx % 2 == 0:
-              stagger = MAX_PLATFORM_WIDTH * 0.75 * 0.5
-          else:
-              stagger = 0
+            new_height = prev_plat.pos.y - JUMP_HEIGHT * min(0.9 + DIFFICULTY / 10, 1)
+            if staggered and idx % 2 == 0:
+                stagger = MAX_PLATFORM_WIDTH * 0.75 * 0.5
+            else:
+                stagger = 0
 
-          position = center + offset * (MAX_PLATFORM_WIDTH * 2 * 0.75) + stagger, new_height
-          pl = Platform(size=(MAX_PLATFORM_WIDTH * 0.75, PLATFORM_HEIGHT), position=position, moving=False)
-          platforms.add(pl)
-          all_sprites.add(pl)
+            position = (
+                center + offset * (MAX_PLATFORM_WIDTH * 2 * 0.75) + stagger,
+                new_height,
+            )
+            pl = Platform(
+                size=(MAX_PLATFORM_WIDTH * 0.75, PLATFORM_HEIGHT),
+                position=position,
+                moving=False,
+            )
+            platforms.add(pl)
+            all_sprites.add(pl)
         prev_plat = pl
 
     top_platforms = [pl]
@@ -352,8 +350,8 @@ def add_random_platform():
         new_layer = True
         prev_platform = random.choice(top_platforms)
         prev_height = prev_platform.pos.y
-        new_height = prev_height - JUMP_HEIGHT * min(1, 0.75 + DIFFICULTY/10)
-        min_horizontal_dist = MAX_PLATFORM_WIDTH * 0.5 * min(1, 0.9 + DIFFICULTY/10)
+        new_height = prev_height - JUMP_HEIGHT * min(1, 0.75 + DIFFICULTY / 10)
+        min_horizontal_dist = MAX_PLATFORM_WIDTH * 0.5 * min(1, 0.9 + DIFFICULTY / 10)
         max_horizontal_dist = JUMP_HEIGHT * 1.75 * PLAYER_HORIZONTAL_VEL / JUMP_SPEED
     else:
         new_layer = False
@@ -362,11 +360,11 @@ def add_random_platform():
         new_height = prev_height
         min_horizontal_dist = MAX_PLATFORM_WIDTH * 1.5 + MAX_PLATFORM_WIDTH / 2
         max_horizontal_dist = JUMP_HEIGHT * 4 * PLAYER_HORIZONTAL_VEL / JUMP_SPEED
-    
+
     # make new platform on left
     r_start_left = max(0, prev_platform.pos.x - max_horizontal_dist)
     r_end_left = max(0, prev_platform.pos.x - min_horizontal_dist)
-    left_range= r_end_left - r_start_left
+    left_range = r_end_left - r_start_left
     # make new platform on right
     r_start_right = min(WIDTH, prev_platform.pos.x + min_horizontal_dist)
     r_end_right = min(WIDTH, prev_platform.pos.x + max_horizontal_dist)
@@ -390,51 +388,58 @@ def add_random_platform():
     all_sprites.add(pl)
 
     if new_layer:
-      top_platforms = [pl]
+        top_platforms = [pl]
     else:
-      top_platforms.append(pl)
+        top_platforms.append(pl)
 
     if new_layer:
-      return 1
+        return 1
 
     return 0
 
 
 def add_staircase():
-  # logging.debug("Adding a new staircase")
-  global top_platforms, platforms, all_sprites
-  # start from a random platform
-  prev_platform = random.choice(top_platforms)
-  # direction is based off of the previous platfrom center
+    # logging.debug("Adding a new staircase")
+    global top_platforms, platforms, all_sprites
+    # start from a random platform
+    prev_platform = random.choice(top_platforms)
+    # direction is based off of the previous platfrom center
 
-  if prev_platform.pos.x < WIDTH / 2:
-      dir = -1 # left
-  else:
-      dir = 1 # right
+    if prev_platform.pos.x < WIDTH / 2:
+        dir = -1  # left
+    else:
+        dir = 1  # right
 
-  pt_count = PHASE_MAX_LAYERS
-  for _ in range(pt_count):
-      prev_height = prev_platform.pos.y
-      new_height = prev_height - JUMP_HEIGHT * 0.5
-      x_center = prev_platform.pos.x + dir * MAX_PLATFORM_WIDTH * min(3, DIFFICULTY * 0.5)
-      if x_center + MAX_PLATFORM_WIDTH / 2 + 5 > WIDTH or x_center - MAX_PLATFORM_WIDTH / 2 - 5 < 0:
-          dir *= -1
-          x_center = prev_platform.pos.x + dir * MAX_PLATFORM_WIDTH / 1.2
+    pt_count = PHASE_MAX_LAYERS
+    for _ in range(pt_count):
+        prev_height = prev_platform.pos.y
+        new_height = prev_height - JUMP_HEIGHT * 0.5
+        x_center = prev_platform.pos.x + dir * MAX_PLATFORM_WIDTH * min(
+            3, DIFFICULTY * 0.5
+        )
+        if (
+            x_center + MAX_PLATFORM_WIDTH / 2 + 5 > WIDTH
+            or x_center - MAX_PLATFORM_WIDTH / 2 - 5 < 0
+        ):
+            dir *= -1
+            x_center = prev_platform.pos.x + dir * MAX_PLATFORM_WIDTH / 1.2
 
-      position = x_center, new_height
-      pl = Platform(size=(MAX_PLATFORM_WIDTH, PLATFORM_HEIGHT), position=position, moving=False)
-      # logging.debug("Adding a staircase platform")
-      platforms.add(pl)
-      all_sprites.add(pl)
-      prev_platform = pl
+        position = x_center, new_height
+        pl = Platform(
+            size=(MAX_PLATFORM_WIDTH, PLATFORM_HEIGHT), position=position, moving=False
+        )
+        # logging.debug("Adding a staircase platform")
+        platforms.add(pl)
+        all_sprites.add(pl)
+        prev_platform = pl
 
-  top_platforms = [pl]  
+    top_platforms = [pl]
 
-  return pt_count
-        
-      
+    return pt_count
+
 
 current_phase = 0
+
 
 def add_platforms():
     global top_platforms, phase_layers, current_phase, DIFFICULTY
@@ -442,11 +447,11 @@ def add_platforms():
     prev_height = prev_platform.pos.y
     if prev_height < -50:
         return
-    
+
     if phase_layers >= PHASE_MAX_LAYERS:
         prev_phase = current_phase
         while prev_phase == current_phase:
-          current_phase = random.randint(0, 3)
+            current_phase = random.randint(0, 3)
         phase_layers = 0
         DIFFICULTY += 1
 
@@ -458,7 +463,6 @@ def add_platforms():
         phase_layers += add_stack()
     elif current_phase == 3:
         phase_layers += add_stack(staggered=True)
-    
 
 
 def init():
@@ -548,21 +552,20 @@ def game_loop():
     while True:
         flipIn -= flipDec
 
-            
         if flipIn <= 0:
             flip_state()
             flipIn = 100
             flipDec = random.randint(2, 3) / 10
-          
+
         elif flipIn <= 20:
             floor_val = flipIn // 5
             if floor_val % 2 == 0:
-              P1.surf.fill(WHITE)
+                P1.surf.fill(WHITE)
             else:
-              if INVERSE:
-                P1.surf.fill(COLOR_FLIP)
-              else:
-                P1.surf.fill(COLOR_NORMAL)
+                if INVERSE:
+                    P1.surf.fill(COLOR_FLIP)
+                else:
+                    P1.surf.fill(COLOR_NORMAL)
 
         if keyboard_events() == -1:
             return
@@ -575,19 +578,19 @@ def game_loop():
         if P1.rect.top > HEIGHT:
             end_game()
             return
-        
+
         if PLAYER_STARTED:
-          # Slow down the camera when it is about to flip
-          if flipIn <= 30:
-              max_camera_speed = MAX_CAMERA_SPEED
-          else:
-            # Scaling camera speed according to difficulty
-            max_camera_speed = MAX_CAMERA_SPEED * min(3,  DIFFICULTY * 0.8)
-          
-          camera_speed = MIN_CAMERA_SPEED + (max_camera_speed - MIN_CAMERA_SPEED) * (
+            # Slow down the camera when it is about to flip
+            if flipIn <= 30:
+                max_camera_speed = MAX_CAMERA_SPEED
+            else:
+                # Scaling camera speed according to difficulty
+                max_camera_speed = MAX_CAMERA_SPEED * min(3, DIFFICULTY * 0.8)
+
+            camera_speed = MIN_CAMERA_SPEED + (max_camera_speed - MIN_CAMERA_SPEED) * (
                 HEIGHT - P1.rect.bottom
             ) / (HEIGHT)
-          shift_level_up(camera_speed)
+            shift_level_up(camera_speed)
 
         add_platforms()
 
@@ -601,7 +604,7 @@ def game_loop():
         for entity in all_sprites:
             displaysurface.blit(entity.surf, entity.rect)
 
-        # displaysurface.blit(pygame.transform.rotate(displaysurface, 180), (0, 0))
+        displaysurface.blit(pygame.transform.rotate(displaysurface, 180), (0, 0))
 
         pygame.display.update()
         FramePerSec.tick(FPS)
