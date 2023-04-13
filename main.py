@@ -30,7 +30,12 @@ phase_layers = PHASE_MAX_LAYERS + 1
 JUMP_HEIGHT = JUMP_SPEED**2 / (2 * GRAVITY) - PLATFORM_HEIGHT
 PLATFORM_HEALTH = 50
 DAMAGE_THRESHOLD = PLATFORM_HEALTH / 2
+DIFFICULTY = 0
 
+COLOR_NORMAL = (255, 255, 0)
+COLOR_FLIP = (0, 255, 255)
+WHITE = (255, 255, 255)
+COLOR_NEW = (255, 0 , 0)
 FramePerSec = pygame.time.Clock()
 
 displaysurface = pygame.display.set_mode((WIDTH, HEIGHT), flags=pygame.SCALED, vsync=1)
@@ -67,7 +72,7 @@ class Player(pygame.sprite.Sprite):
         super().__init__()
         # self.image = pygame.image.load("character.png")
         self.surf = pygame.Surface((PLAYER_WIDTH, PLAYER_HEIGHT))
-        self.surf.fill((255, 255, 0))
+        self.surf.fill(COLOR_NORMAL)
         self.rect = self.surf.get_rect()
         self.vel = vec(0, 0)
         self.jumping = False
@@ -75,6 +80,7 @@ class Player(pygame.sprite.Sprite):
         self.collided_platform = None
         self.pos = vec(WIDTH // 2, HEIGHT - 30)
         self.update_rect()
+        self.flash = True
 
     def collision(self):
         hits = pygame.sprite.spritecollide(self, platforms, False)
@@ -199,13 +205,20 @@ class Player(pygame.sprite.Sprite):
                 self.vel.y = -10
 
     def gonna_flip(self):
+      if not self.flash:
         self.surf.fill((255, 255, 255))
+      else:
+        if INVERSE:
+            self.surf.fill(COLOR_FLIP)
+        else:
+            self.surf.fill(COLOR_NORMAL)
+      self.flash = not self.flash
 
     def flip(self):
         if not INVERSE:
-            self.surf.fill((0, 255, 255))
+            self.surf.fill(COLOR_FLIP)
         else:
-            self.surf.fill((255, 255, 0))
+            self.surf.fill(COLOR_NORMAL)
 
     def update_rect(self):
         self.rect.midbottom = int(self.pos.x), int(self.pos.y)
@@ -282,6 +295,9 @@ def flip_state():
     global INVERSE
     P1.flip()
     INVERSE = not INVERSE
+  
+def gonna_flip():
+    P1.gonna_flip()
 
 def add_stack(staggered=False):
     global top_platforms
@@ -289,10 +305,10 @@ def add_stack(staggered=False):
     prev_plat = top_platforms[-1]
 
     offsets = [0, 1, -1]
-    print(center)
+    # print(center)
     for idx in range(PHASE_MAX_LAYERS):
         for offset in offsets:
-          new_height = prev_plat.pos.y - JUMP_HEIGHT * 0.9
+          new_height = prev_plat.pos.y - JUMP_HEIGHT * min(0.9 + DIFFICULTY/10, 1)
           if staggered and idx % 2 == 0:
               stagger = MAX_PLATFORM_WIDTH * 0.75 * 0.5
           else:
@@ -316,8 +332,8 @@ def add_random_platform():
         new_layer = True
         prev_platform = random.choice(top_platforms)
         prev_height = prev_platform.pos.y
-        new_height = prev_height - JUMP_HEIGHT * 0.75
-        min_horizontal_dist = MAX_PLATFORM_WIDTH * 0.5 * 0.9
+        new_height = prev_height - JUMP_HEIGHT * min(1, 0.75 + DIFFICULTY/10)
+        min_horizontal_dist = MAX_PLATFORM_WIDTH * 0.5 * min(1, 0.9 + DIFFICULTY/10)
         max_horizontal_dist = JUMP_HEIGHT * 1.75 * PLAYER_HORIZONTAL_VEL / JUMP_SPEED
     else:
         new_layer = False
@@ -380,7 +396,7 @@ def add_staircase():
   for _ in range(pt_count):
       prev_height = prev_platform.pos.y
       new_height = prev_height - JUMP_HEIGHT * 0.5
-      x_center = prev_platform.pos.x + dir * MAX_PLATFORM_WIDTH / 1.2
+      x_center = prev_platform.pos.x + dir * MAX_PLATFORM_WIDTH * min(3, DIFFICULTY * 0.5)
       if x_center + MAX_PLATFORM_WIDTH / 2 + 5 > WIDTH or x_center - MAX_PLATFORM_WIDTH / 2 - 5 < 0:
           dir *= -1
           x_center = prev_platform.pos.x + dir * MAX_PLATFORM_WIDTH / 1.2
@@ -401,7 +417,7 @@ def add_staircase():
 current_phase = 0
 
 def add_platforms():
-    global top_platforms, phase_layers, current_phase
+    global top_platforms, phase_layers, current_phase, DIFFICULTY
     prev_platform = top_platforms[-1]
     prev_height = prev_platform.pos.y
     if prev_height < -50:
@@ -412,6 +428,7 @@ def add_platforms():
         while prev_phase == current_phase:
           current_phase = random.randint(0, 3)
         phase_layers = 0
+        DIFFICULTY += 1
 
     if current_phase == 0:
         phase_layers += add_staircase()
@@ -432,6 +449,7 @@ def init():
     top_platforms = []
     INVERSE = False
     PLAYER_STARTED = False
+    DIFFICULTY = 0
     flipIn = 100
 
     P1 = Player()
@@ -510,10 +528,21 @@ def game_loop():
     while True:
         flipIn -= flipDec
 
+            
         if flipIn <= 0:
             flip_state()
             flipIn = 100
             flipDec = random.randint(2, 3) / 10
+          
+        elif flipIn <= 20:
+            floor_val = flipIn // 5
+            if floor_val % 2 == 0:
+              P1.surf.fill(WHITE)
+            else:
+              if INVERSE:
+                P1.surf.fill(COLOR_FLIP)
+              else:
+                P1.surf.fill(COLOR_NORMAL)
 
         if keyboard_events() == -1:
             return
@@ -528,7 +557,14 @@ def game_loop():
             return
         
         if PLAYER_STARTED:
-          camera_speed = MIN_CAMERA_SPEED + (MAX_CAMERA_SPEED - MIN_CAMERA_SPEED) * (
+          # Slow down the camera when it is about to flip
+          if flipIn <= 30:
+              max_camera_speed = MAX_CAMERA_SPEED
+          else:
+            # Scaling camera speed according to difficulty
+            max_camera_speed = MAX_CAMERA_SPEED * min(3,  DIFFICULTY * 0.8)
+          
+          camera_speed = MIN_CAMERA_SPEED + (max_camera_speed - MIN_CAMERA_SPEED) * (
                 HEIGHT - P1.rect.bottom
             ) / (HEIGHT)
           shift_level_up(camera_speed)
