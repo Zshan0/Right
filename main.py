@@ -2,7 +2,6 @@ import pygame
 from pygame.locals import *
 import sys
 import random
-import time
 import logging
 
 pygame.init()
@@ -23,32 +22,43 @@ PLATFORM_VEL = 2
 MAX_PLATFORM_WIDTH = 100
 MIN_CAMERA_SPEED = 0.3
 MAX_CAMERA_SPEED = 5
-PLAYER_STARTED = False
 PHASE_MAX_LAYERS = 10
 MOVE_BY = 3
-phase_layers = PHASE_MAX_LAYERS + 1
 JUMP_HEIGHT = JUMP_SPEED**2 / (2 * GRAVITY) - PLATFORM_HEIGHT
 PLATFORM_HEALTH = 50
 DAMAGE_THRESHOLD = PLATFORM_HEALTH / 2
-DIFFICULTY = 0
-H_INVERSE = False
-V_INVERSE = False
-PT1 = None
-LIVES = 5
-hInvert = 100
-hInvertDec = 0.2
-vInvert = 100
-vInvertDec = 0.2
+BG1 = (128, 128, 255)
+BG2 = (255, 128, 128)
 
 COLOR_NORMAL = (255, 255, 0)
 COLOR_FLIP = (0, 255, 255)
 WHITE = (255, 255, 255)
 COLOR_NEW = (255, 0, 0)
-FramePerSec = pygame.time.Clock()
 
-displaysurface = pygame.display.set_mode((WIDTH, HEIGHT), flags=pygame.SCALED, vsync=1)
+FramePerSec = pygame.time.Clock()
 pygame.display.set_caption("Right?")
 
+class GlobalState:
+    def __init__(self) -> None:
+        self.P1 = Player()
+        self.hInvert = 100
+        self.hInvertDec = 0.2
+        self.vInvert = 100
+        self.vInvertDec = 0.2
+        self.displaysurface = pygame.display.set_mode((WIDTH, HEIGHT), flags=pygame.SCALED, vsync=1)
+        self.horizontally_inverted = False
+        self.vertically_inverted = False
+        self.gs.lives = 5
+        self.PT1 = None
+        self.difficulty = 0
+        self.phase_layers = PHASE_MAX_LAYERS + 1
+        self.all_sprites = pygame.sprite.Group()
+        self.platforms = pygame.sprite.Group()
+        self.falling = False
+        self.top_platforms = []
+        
+
+gs = GlobalState()
 
 def left(s):
     return s.pos.x - s.width / 2
@@ -107,12 +117,12 @@ class Player(pygame.sprite.Sprite):
         self.flash = True
 
     def collision(self):
-        P1.collided_platform = None
-        hits = pygame.sprite.spritecollide(self, platforms, False)
+        gs.P1.collided_platform = None
+        hits = pygame.sprite.spritecollide(self, gs.platforms, False)
 
         if len(hits) == 0:
             return
-        # TODO move platforms also
+        # TODO move gs.platforms also
         collided_platform = hits[0]
 
         msv = min_sep_vec(self.rect, collided_platform.rect)
@@ -134,7 +144,7 @@ class Player(pygame.sprite.Sprite):
             else:
                 self.pos.x = right(collided_platform) + PLAYER_WIDTH / 2
 
-            # if players and platform move in opposite directions then shift the player by the platforms velocity
+            # if players and platform move in opposite directions then shift the player by the gs.platforms velocity
             if self.vel.x * collided_platform.vel.x < 0:
                 self.pos.x += collided_platform.vel.x
             # logging.debug(f"changed pos:{self.pos.x}\n")
@@ -175,9 +185,6 @@ class Player(pygame.sprite.Sprite):
             
 
     def move(self):
-        global PLAYER_STARTED
-        if not PLAYER_STARTED and self.pos.y < HEIGHT * 0.5:
-            PLAYER_STARTED = True
 
         self.vel = vec(0, self.vel.y)
         self.vel.y += GRAVITY
@@ -187,9 +194,9 @@ class Player(pygame.sprite.Sprite):
             self.vel.x = -PLAYER_HORIZONTAL_VEL
         if pressed_keys[K_RIGHT]:
             self.vel.x = PLAYER_HORIZONTAL_VEL
-        self.vel.x *= -1 if H_INVERSE else 1
+        self.vel.x *= -1 if gs.horizontally_inverted else 1
 
-        hits = pygame.sprite.spritecollide(self, platforms, False)
+        hits = pygame.sprite.spritecollide(self, gs.platforms, False)
         if pressed_keys[K_SPACE] and len(hits) > 0 and not self.jumping:
             # jumping
             self.jumping = True
@@ -199,7 +206,7 @@ class Player(pygame.sprite.Sprite):
         for event in pygame.event.get():
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_SPACE:
-                    P1.cancel_jump()
+                    gs.P1.cancel_jump()
 
         if self.collided_platform:
             self.vel.x += self.collided_platform.vel.x
@@ -223,14 +230,14 @@ class Player(pygame.sprite.Sprite):
         if not self.flash:
             self.surf.fill((255, 255, 255))
         else:
-            if H_INVERSE:
+            if gs.horizontally_inverted:
                 self.surf.fill(COLOR_FLIP)
             else:
                 self.surf.fill(COLOR_NORMAL)
         self.flash = not self.flash
 
     def flip(self):
-        if not H_INVERSE:
+        if not gs.horizontally_inverted:
             self.surf.fill(COLOR_FLIP)
         else:
             self.surf.fill(COLOR_NORMAL)
@@ -301,31 +308,23 @@ def check(platform, groupies):
                 return True
 
 
-P1 = Player()
-all_sprites = pygame.sprite.Group()
-platforms = pygame.sprite.Group()
-top_platforms = []
-
-
 def flip_state():
-    global H_INVERSE
-    P1.flip()
-    H_INVERSE = not H_INVERSE
+    gs.P1.flip()
+    gs.horizontally_inverted = not gs.horizontally_inverted
 
 
 def gonna_flip():
-    P1.gonna_flip()
+    gs.P1.gonna_flip()
 
 
 def add_stack(staggered=False):
-    global top_platforms
     center = (random.random() * 0.33 + 0.33) * WIDTH
-    prev_plat = top_platforms[-1]
+    prev_plat = gs.top_platforms[-1]
 
     offsets = [0, 1, -1]
     for idx in range(PHASE_MAX_LAYERS):
         for offset in offsets:
-            new_height = prev_plat.pos.y - JUMP_HEIGHT * min(0.9 + DIFFICULTY / 10, 1)
+            new_height = prev_plat.pos.y - JUMP_HEIGHT * min(0.9 + gs.difficulty / 10, 1)
             if staggered and idx % 2 == 0:
                 stagger = MAX_PLATFORM_WIDTH * 0.75 * 0.5
             else:
@@ -340,28 +339,28 @@ def add_stack(staggered=False):
                 position=position,
                 moving=False,
             )
-            platforms.add(pl)
-            all_sprites.add(pl)
+            gs.platforms.add(pl)
+            gs.all_sprites.add(pl)
         prev_plat = pl
 
-    top_platforms = [pl]
+    gs.top_platforms = [pl]
 
     return PHASE_MAX_LAYERS * len(offsets)
 
 
 def add_random_platform():
-    global top_platforms
+    
     new_layer = False
-    if len(top_platforms) >= 2 or random.random() < 0.5:
+    if len(gs.top_platforms) >= 2 or random.random() < 0.5:
         new_layer = True
-        prev_platform = random.choice(top_platforms)
+        prev_platform = random.choice(gs.top_platforms)
         prev_height = prev_platform.pos.y
-        new_height = prev_height - JUMP_HEIGHT * min(1, 0.75 + DIFFICULTY / 10)
-        min_horizontal_dist = MAX_PLATFORM_WIDTH * 0.5 * min(1, 0.9 + DIFFICULTY / 10)
+        new_height = prev_height - JUMP_HEIGHT * min(1, 0.75 + gs.difficulty / 10)
+        min_horizontal_dist = MAX_PLATFORM_WIDTH * 0.5 * min(1, 0.9 + gs.difficulty / 10)
         max_horizontal_dist = JUMP_HEIGHT * 1.75 * PLAYER_HORIZONTAL_VEL / JUMP_SPEED
     else:
         new_layer = False
-        prev_platform = top_platforms[0]
+        prev_platform = gs.top_platforms[0]
         prev_height = prev_platform.pos.y
         new_height = prev_height
         min_horizontal_dist = MAX_PLATFORM_WIDTH * 1.5 + MAX_PLATFORM_WIDTH / 2
@@ -390,13 +389,13 @@ def add_random_platform():
     size = (MAX_PLATFORM_WIDTH, PLATFORM_HEIGHT)
 
     pl = Platform(size=size, position=position, moving=False)
-    platforms.add(pl)
-    all_sprites.add(pl)
+    gs.platforms.add(pl)
+    gs.all_sprites.add(pl)
 
     if new_layer:
-        top_platforms = [pl]
+        gs.top_platforms = [pl]
     else:
-        top_platforms.append(pl)
+        gs.top_platforms.append(pl)
 
     if new_layer:
         return 1
@@ -406,9 +405,8 @@ def add_random_platform():
 
 def add_staircase():
     # logging.debug("Adding a new staircase")
-    global top_platforms, platforms, all_sprites
     # start from a random platform
-    prev_platform = random.choice(top_platforms)
+    prev_platform = random.choice(gs.top_platforms)
     # direction is based off of the previous platfrom center
 
     if prev_platform.pos.x < WIDTH / 2:
@@ -421,7 +419,7 @@ def add_staircase():
         prev_height = prev_platform.pos.y
         new_height = prev_height - JUMP_HEIGHT * 0.5
         x_center = prev_platform.pos.x + dir * MAX_PLATFORM_WIDTH * min(
-            3, DIFFICULTY * 0.5
+            3, gs.difficulty * 0.5
         )
         if (
             x_center + MAX_PLATFORM_WIDTH / 2 + 5 > WIDTH
@@ -435,11 +433,11 @@ def add_staircase():
             size=(MAX_PLATFORM_WIDTH, PLATFORM_HEIGHT), position=position, moving=False
         )
         # logging.debug("Adding a staircase platform")
-        platforms.add(pl)
-        all_sprites.add(pl)
+        gs.platforms.add(pl)
+        gs.all_sprites.add(pl)
         prev_platform = pl
 
-    top_platforms = [pl]
+    gs.top_platforms = [pl]
 
     return pt_count
 
@@ -448,53 +446,41 @@ current_phase = 0
 
 
 def add_platforms():
-    global top_platforms, phase_layers, current_phase, DIFFICULTY
-    prev_platform = top_platforms[-1]
+    prev_platform = gs.top_platforms[-1]
     prev_height = prev_platform.pos.y
     if prev_height < -50:
         return
 
-    if phase_layers >= PHASE_MAX_LAYERS:
+    if gs.phase_layers >= PHASE_MAX_LAYERS:
         prev_phase = current_phase
         while prev_phase == current_phase:
             current_phase = random.randint(0, 3)
-        phase_layers = 0
-        DIFFICULTY += 1
+        gs.phase_layers = 0
+        gs.difficulty += 1
 
     if current_phase == 0:
-        phase_layers += add_staircase()
+        gs.phase_layers += add_staircase()
     elif current_phase == 1:
-        phase_layers += add_random_platform()
+        gs.phase_layers += add_random_platform()
     elif current_phase == 2:
-        phase_layers += add_stack()
+        gs.phase_layers += add_stack()
     elif current_phase == 3:
-        phase_layers += add_stack(staggered=True)
+        gs.phase_layers += add_stack(staggered=True)
 
 
 def init():
-    global H_INVERSE, all_sprites, platforms, top_platforms, P1, PLAYER_STARTED, hInvert, DIFFICULTY, V_INVERSE, PT1, LIVES
-    # reset the game state
-    all_sprites = pygame.sprite.Group()
-    platforms = pygame.sprite.Group()
-    top_platforms = []
-    H_INVERSE = False
-    V_INVERSE = False
-    PLAYER_STARTED = False
-    DIFFICULTY = 0
-    hInvert = 100
-    LIVES = 5
+    gs = GlobalState()
 
-    P1 = Player()
-    all_sprites.add(P1)
-    PT1 = Platform(
+    gs.all_sprites.add(gs.P1)
+    gs.PT1 = Platform(
         size=(WIDTH * 1.5, PLATFORM_HEIGHT),
         position=(WIDTH // 2, HEIGHT - 10),
         moving=False,
     )
-    PT1.health = 100 * PLATFORM_HEALTH
-    platforms.add(PT1)
-    all_sprites.add(PT1)
-    top_platforms.append(PT1)
+    gs.PT1.health = 100 * PLATFORM_HEALTH
+    gs.platforms.add(gs.PT1)
+    gs.all_sprites.add(gs.PT1)
+    gs.top_platforms.append(gs.PT1)
 
     add_platforms()
 
@@ -515,68 +501,60 @@ def keyboard_events():
 
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_SPACE:
-                P1.cancel_jump()
+                gs.P1.cancel_jump()
 
 
 def end_game():
-    for entity in all_sprites:
+    for entity in gs.all_sprites:
         entity.kill()
         # time.sleep(1)
-        # displaysurface.fill((255, 0, 0))
+        # gs.displaysurface.fill((255, 0, 0))
         # pygame.display.update()
         # time.sleep(1)
         # pygame.quit()
         # sys.exit()
 
 
-falling = False
 def camera():
-    global falling, LIVES
     v = 2
 
-    if P1.pos.y > 0.96 * HEIGHT and P1.collided_platform == None and P1.vel.y >= 0 and not falling:
-        falling = True
-        LIVES -= 1
-        if LIVES == 0:
+    if gs.P1.pos.y > 0.96 * HEIGHT and gs.P1.collided_platform == None and gs.P1.vel.y >= 0 and not gs.falling:
+        gs.falling = True
+        gs.lives -= 1
+        if gs.lives == 0:
             return -1
 
-    if falling and P1.collided_platform is not None:
-        falling = False
+    if gs.falling and gs.P1.collided_platform is not None:
+        gs.falling = False
   
 
-    if falling:
+    if gs.falling:
         v = -(PLAYER_TERMINAL_VEL + 2)
         
-    if falling and P1.pos.y < HEIGHT * 0.35:
+    if gs.falling and gs.P1.pos.y < HEIGHT * 0.35:
         v = -PLAYER_TERMINAL_VEL
 
-    if P1.collided_platform == PT1:
+    if gs.P1.collided_platform == gs.PT1:
       v = 0          
 
-    P1.pos.y += v
-    for plat in platforms:
+    gs.P1.pos.y += v
+    for plat in gs.platforms:
         plat.pos.y += v
         # if plat.pos.y >= HEIGHT:
         #     plat.kill()
 
 
-BG1 = (128, 128, 255)
-BG2 = (255, 128, 128)
-
-
 def bg_color():
-    global vInvert
-    if V_INVERSE:
-        flip = 100 - vInvert
+    if gs.vertically_inverted:
+        flip = 100 - gs.vInvert
     else:
-        flip = vInvert
+        flip = gs.vInvert
     return tuple(
         map(lambda x: int(x[0] * flip / 100 + x[1] * (1 - flip / 100)), zip(BG1, BG2))
     )
 
 
 def game_loop():
-    global hInvert, hInvertDec, vInvert, vInvertDec, V_INVERSE
     while True:
         # handle keyboard input
         if keyboard_events() == -1:
@@ -585,64 +563,62 @@ def game_loop():
         if camera() == -1:
             return
         # move entities and check for collision
-        P1.move()
-        [entity.move() for entity in platforms]
-        P1.collision()
+        gs.P1.move()
+        [entity.move() for entity in gs.platforms]
+        gs.P1.collision()
 
-        if P1.pos.y > HEIGHT:
+        if gs.P1.pos.y > HEIGHT:
             end_game()
             return
 
-
-
         add_platforms()
 
-        P1.update_rect()
+        gs.P1.update_rect()
 
 
         # handle the inversion counters
-        hInvert -= hInvertDec
-        vInvert -= vInvertDec
+        gs.hInvert -= gs.hInvertDec
+        gs.vInvert -= gs.vInvertDec
 
-        if hInvert <= 0:
+        if gs.hInvert <= 0:
             flip_state()
-            hInvert = 100
-            hInvertDec = random.randint(20, 30) / 100
+            gs.hInvert = 100
+            gs.hInvertDec = random.randint(20, 30) / 100
 
-        if vInvert <= 0:
-            V_INVERSE = not V_INVERSE
-            vInvert = 100
-            vInvertDec = random.randint(5, 10) / 100
+        if gs.vInvert <= 0:
+            gs.vertically_inverted = not gs.vertically_inverted
+            gs.vInvert = 100
+            gs.vInvertDec = random.randint(5, 10) / 100
 
-        if hInvert <= 20:
-            floor_val = hInvert // 5
+        if gs.hInvert <= 20:
+            floor_val = gs.hInvert // 5
             if floor_val % 2 == 0:
-                P1.surf.fill(WHITE)
+                gs.P1.surf.fill(WHITE)
             else:
-                if H_INVERSE:
-                    P1.surf.fill(COLOR_FLIP)
+                if gs.horizontally_inverted:
+                    gs.P1.surf.fill(COLOR_FLIP)
                 else:
-                    P1.surf.fill(COLOR_NORMAL)
+                    gs.P1.surf.fill(COLOR_NORMAL)
 
-        if V_INVERSE:
-            displaysurface.fill(BG1)
+        if gs.vertically_inverted:
+            gs.displaysurface.fill(BG1)
         else:
-            displaysurface.fill(BG2)
+            gs.displaysurface.fill(BG2)
 
-        if vInvert <= 20:
-            floor_val = vInvert // 5
+        if gs.vInvert <= 20:
+            floor_val = gs.vInvert // 5
             if floor_val % 2 == 0:
-                displaysurface.fill((230, 230, 230))
+                gs.displaysurface.fill((230, 230, 230))
 
 
         f = pygame.font.SysFont("Verdana", 20)
-        g = f.render(str(LIVES), True, (123, 255, 0))
-        displaysurface.blit(g, (WIDTH / 2, 10))
-        for entity in all_sprites:
-            displaysurface.blit(entity.surf, entity.rect)
+        g = f.render(str(gs.lives), True, (123, 255, 0))
+        gs.displaysurface.blit(g, (WIDTH / 2, 10))
+        for entity in gs.all_sprites:
+            gs.displaysurface.blit(entity.surf, entity.rect)
 
-        if V_INVERSE:
-          displaysurface.blit(pygame.transform.rotate(displaysurface, 180), (0, 0))
+        if gs.vertically_inverted:
+          gs.displaysurface.blit(pygame.transform.rotate(gs.displaysurface, 180), (0, 0))
 
         pygame.display.update()
         FramePerSec.tick(FPS)
