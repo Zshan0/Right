@@ -31,6 +31,13 @@ JUMP_HEIGHT = JUMP_SPEED**2 / (2 * GRAVITY) - PLATFORM_HEIGHT
 PLATFORM_HEALTH = 50
 DAMAGE_THRESHOLD = PLATFORM_HEALTH / 2
 DIFFICULTY = 0
+H_INVERSE = False
+V_INVERSE = False
+PT1 = None
+hInvert = 100
+hInvertDec = 0.2
+vInvert = 100
+vInvertDec = 0.2
 
 COLOR_NORMAL = (255, 255, 0)
 COLOR_FLIP = (0, 255, 255)
@@ -99,6 +106,7 @@ class Player(pygame.sprite.Sprite):
         self.flash = True
 
     def collision(self):
+        P1.collided_platform = None
         hits = pygame.sprite.spritecollide(self, platforms, False)
 
         if len(hits) == 0:
@@ -150,8 +158,10 @@ class Player(pygame.sprite.Sprite):
             self.pos.y = top(collided_platform) + 1
             self.vel.y = 0
             self.jumping = False
+            self.collided_platform = collided_platform
+
             # decrease the health of the platform every time it is in contact
-            collided_platform.health -= 1
+            collided_platform.health -= 0
 
             if collided_platform.health <= 0:
                 collided_platform.kill()
@@ -161,7 +171,7 @@ class Player(pygame.sprite.Sprite):
             ):
                 collided_platform.change_color()
 
-            self.collided_platform = collided_platform
+            
 
     def move(self):
         global PLAYER_STARTED
@@ -176,7 +186,7 @@ class Player(pygame.sprite.Sprite):
             self.vel.x = -PLAYER_HORIZONTAL_VEL
         if pressed_keys[K_RIGHT]:
             self.vel.x = PLAYER_HORIZONTAL_VEL
-        self.vel.x *= -1 if INVERSE else 1
+        self.vel.x *= -1 if H_INVERSE else 1
 
         hits = pygame.sprite.spritecollide(self, platforms, False)
         if pressed_keys[K_SPACE] and len(hits) > 0 and not self.jumping:
@@ -212,14 +222,14 @@ class Player(pygame.sprite.Sprite):
         if not self.flash:
             self.surf.fill((255, 255, 255))
         else:
-            if INVERSE:
+            if H_INVERSE:
                 self.surf.fill(COLOR_FLIP)
             else:
                 self.surf.fill(COLOR_NORMAL)
         self.flash = not self.flash
 
     def flip(self):
-        if not INVERSE:
+        if not H_INVERSE:
             self.surf.fill(COLOR_FLIP)
         else:
             self.surf.fill(COLOR_NORMAL)
@@ -295,16 +305,11 @@ all_sprites = pygame.sprite.Group()
 platforms = pygame.sprite.Group()
 top_platforms = []
 
-# GAME STATES
-INVERSE = False
-flipIn = 100
-flipDec = 0.2
-
 
 def flip_state():
-    global INVERSE
+    global H_INVERSE
     P1.flip()
-    INVERSE = not INVERSE
+    H_INVERSE = not H_INVERSE
 
 
 def gonna_flip():
@@ -466,15 +471,16 @@ def add_platforms():
 
 
 def init():
-    global INVERSE, all_sprites, platforms, top_platforms, P1, PLAYER_STARTED, flipIn, DIFFICULTY
+    global H_INVERSE, all_sprites, platforms, top_platforms, P1, PLAYER_STARTED, hInvert, DIFFICULTY, V_INVERSE, PT1
     # reset the game state
     all_sprites = pygame.sprite.Group()
     platforms = pygame.sprite.Group()
     top_platforms = []
-    INVERSE = False
+    H_INVERSE = False
+    V_INVERSE = False
     PLAYER_STARTED = False
     DIFFICULTY = 0
-    flipIn = 100
+    hInvert = 100
 
     P1 = Player()
     all_sprites.add(P1)
@@ -521,56 +527,58 @@ def end_game():
         # sys.exit()
 
 
-def shift_level_up(v):
-    """
-    Takes input the camera speed and moves the camera by that amount in each frame
-    """
+falling = False
+def camera():
+    global falling
+    v = 2
+
+    if P1.pos.y > 0.96 * HEIGHT and P1.collided_platform == None and P1.vel.y >= 0:
+        falling = True
+
+    if falling and P1.collided_platform is not None:
+        falling = False
+  
+
+    if falling:
+        v = -(PLAYER_TERMINAL_VEL + 2)
+        
+    if falling and P1.pos.y < HEIGHT * 0.35:
+        v = -PLAYER_TERMINAL_VEL
+
+    if P1.collided_platform == PT1:
+      v = 0          
+
     P1.pos.y += v
     for plat in platforms:
         plat.pos.y += v
-        if plat.pos.y >= HEIGHT:
-            plat.kill()
+        # if plat.pos.y >= HEIGHT:
+        #     plat.kill()
 
 
-BG1 = (150, 0, 50)
-BG2 = (50, 0, 200)
+BG1 = (128, 128, 255)
+BG2 = (255, 128, 128)
 
 
 def bg_color():
-    global flipIn
-    if INVERSE:
-        flip = 100 - flipIn
+    global vInvert
+    if V_INVERSE:
+        flip = 100 - vInvert
     else:
-        flip = flipIn
+        flip = vInvert
     return tuple(
         map(lambda x: int(x[0] * flip / 100 + x[1] * (1 - flip / 100)), zip(BG1, BG2))
     )
 
 
 def game_loop():
-    global flipIn, flipDec
+    global hInvert, hInvertDec, vInvert, vInvertDec, V_INVERSE
     while True:
-        flipIn -= flipDec
-
-        if flipIn <= 0:
-            flip_state()
-            flipIn = 100
-            flipDec = random.randint(2, 3) / 10
-
-        elif flipIn <= 20:
-            floor_val = flipIn // 5
-            if floor_val % 2 == 0:
-                P1.surf.fill(WHITE)
-            else:
-                if INVERSE:
-                    P1.surf.fill(COLOR_FLIP)
-                else:
-                    P1.surf.fill(COLOR_NORMAL)
-
+        # handle keyboard input
         if keyboard_events() == -1:
             return
-
-        # first move and update player
+        
+        camera()
+        # move entities and check for collision
         P1.move()
         [entity.move() for entity in platforms]
         P1.collision()
@@ -579,24 +587,47 @@ def game_loop():
             end_game()
             return
 
-        if PLAYER_STARTED:
-            # Slow down the camera when it is about to flip
-            if flipIn <= 30:
-                max_camera_speed = MAX_CAMERA_SPEED
-            else:
-                # Scaling camera speed according to difficulty
-                max_camera_speed = MAX_CAMERA_SPEED * min(3, DIFFICULTY * 0.8)
 
-            camera_speed = MIN_CAMERA_SPEED + (max_camera_speed - MIN_CAMERA_SPEED) * (
-                HEIGHT - P1.rect.bottom
-            ) / (HEIGHT)
-            shift_level_up(camera_speed)
 
         add_platforms()
 
         P1.update_rect()
 
-        displaysurface.fill(bg_color())
+
+        # handle the inversion counters
+        # hInvert -= hInvertDec
+        # vInvert -= vInvertDec
+
+        if hInvert <= 0:
+            flip_state()
+            hInvert = 100
+            hInvertDec = random.randint(20, 30) / 100
+
+        if vInvert <= 0:
+            V_INVERSE = not V_INVERSE
+            vInvert = 100
+            vInvertDec = random.randint(5, 10) / 100
+
+        if hInvert <= 20:
+            floor_val = hInvert // 5
+            if floor_val % 2 == 0:
+                P1.surf.fill(WHITE)
+            else:
+                if H_INVERSE:
+                    P1.surf.fill(COLOR_FLIP)
+                else:
+                    P1.surf.fill(COLOR_NORMAL)
+
+        if V_INVERSE:
+            displaysurface.fill(BG1)
+        else:
+            displaysurface.fill(BG2)
+
+        if vInvert <= 20:
+            floor_val = vInvert // 10
+            if floor_val % 2 == 0:
+                displaysurface.fill((230, 230, 230))
+
 
         f = pygame.font.SysFont("Verdana", 20)
         g = f.render(str(int(FramePerSec.get_fps())), True, (123, 255, 0))
@@ -604,7 +635,8 @@ def game_loop():
         for entity in all_sprites:
             displaysurface.blit(entity.surf, entity.rect)
 
-        displaysurface.blit(pygame.transform.rotate(displaysurface, 180), (0, 0))
+        if V_INVERSE:
+          displaysurface.blit(pygame.transform.rotate(displaysurface, 180), (0, 0))
 
         pygame.display.update()
         FramePerSec.tick(FPS)
