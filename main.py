@@ -34,6 +34,7 @@ DIFFICULTY = 0
 H_INVERSE = False
 V_INVERSE = False
 PT1 = None
+LIVES = 5
 hInvert = 100
 hInvertDec = 0.2
 vInvert = 100
@@ -471,7 +472,7 @@ def add_platforms():
 
 
 def init():
-    global H_INVERSE, all_sprites, platforms, top_platforms, P1, PLAYER_STARTED, hInvert, DIFFICULTY, V_INVERSE, PT1
+    global H_INVERSE, all_sprites, platforms, top_platforms, P1, PLAYER_STARTED, hInvert, DIFFICULTY, V_INVERSE, PT1, LIVES
     # reset the game state
     all_sprites = pygame.sprite.Group()
     platforms = pygame.sprite.Group()
@@ -481,6 +482,7 @@ def init():
     PLAYER_STARTED = False
     DIFFICULTY = 0
     hInvert = 100
+    LIVES = 5
 
     P1 = Player()
     all_sprites.add(P1)
@@ -529,11 +531,14 @@ def end_game():
 
 falling = False
 def camera():
-    global falling
+    global falling, LIVES
     v = 2
 
-    if P1.pos.y > 0.96 * HEIGHT and P1.collided_platform == None and P1.vel.y >= 0:
+    if P1.pos.y > 0.96 * HEIGHT and P1.collided_platform == None and P1.vel.y >= 0 and not falling:
         falling = True
+        LIVES -= 1
+        if LIVES == 0:
+            return -1
 
     if falling and P1.collided_platform is not None:
         falling = False
@@ -577,13 +582,14 @@ def game_loop():
         if keyboard_events() == -1:
             return
         
-        camera()
+        if camera() == -1:
+            return
         # move entities and check for collision
         P1.move()
         [entity.move() for entity in platforms]
         P1.collision()
 
-        if P1.rect.top > HEIGHT:
+        if P1.pos.y > HEIGHT:
             end_game()
             return
 
@@ -595,8 +601,8 @@ def game_loop():
 
 
         # handle the inversion counters
-        # hInvert -= hInvertDec
-        # vInvert -= vInvertDec
+        hInvert -= hInvertDec
+        vInvert -= vInvertDec
 
         if hInvert <= 0:
             flip_state()
@@ -624,13 +630,13 @@ def game_loop():
             displaysurface.fill(BG2)
 
         if vInvert <= 20:
-            floor_val = vInvert // 10
+            floor_val = vInvert // 5
             if floor_val % 2 == 0:
                 displaysurface.fill((230, 230, 230))
 
 
         f = pygame.font.SysFont("Verdana", 20)
-        g = f.render(str(int(FramePerSec.get_fps())), True, (123, 255, 0))
+        g = f.render(str(LIVES), True, (123, 255, 0))
         displaysurface.blit(g, (WIDTH / 2, 10))
         for entity in all_sprites:
             displaysurface.blit(entity.surf, entity.rect)
