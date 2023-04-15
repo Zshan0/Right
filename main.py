@@ -3,10 +3,9 @@ from pygame.locals import *
 import sys
 import random
 import logging
+vec = pygame.math.Vector2
 
-pygame.init()
-vec = pygame.math.Vector2  # 2 for two dimensional
-
+# constants!
 HEIGHT = 900
 WIDTH = 900
 PLAYER_HORIZONTAL_VEL = 8
@@ -29,77 +28,59 @@ PLATFORM_HEALTH = 50
 DAMAGE_THRESHOLD = PLATFORM_HEALTH / 2
 BG1 = (128, 128, 255)
 BG2 = (255, 128, 128)
-
 COLOR_NORMAL = (255, 255, 0)
 COLOR_FLIP = (0, 255, 255)
 WHITE = (255, 255, 255)
 COLOR_NEW = (255, 0, 0)
 
-FramePerSec = pygame.time.Clock()
-pygame.display.set_caption("Right?")
+class Platform(pygame.sprite.Sprite):
+    def __init__(self, size=None, position=None, moving=True):
+        super().__init__()
+        if size is None:
+            self.surf = pygame.Surface((MAX_PLATFORM_WIDTH, PLATFORM_HEIGHT))
+        else:
+            self.surf = pygame.Surface(size)
 
-class GlobalState:
-    def __init__(self) -> None:
-        self.P1 = Player()
-        self.hInvert = 100
-        self.hInvertDec = 0.2
-        self.vInvert = 100
-        self.vInvertDec = 0.2
-        self.displaysurface = pygame.display.set_mode((WIDTH, HEIGHT), flags=pygame.SCALED, vsync=1)
-        self.horizontally_inverted = False
-        self.vertically_inverted = False
-        self.gs.lives = 5
-        self.PT1 = None
-        self.difficulty = 0
-        self.phase_layers = PHASE_MAX_LAYERS + 1
-        self.all_sprites = pygame.sprite.Group()
-        self.platforms = pygame.sprite.Group()
-        self.falling = False
-        self.top_platforms = []
+        self.height = self.surf.get_height()
+        self.width = self.surf.get_width()
+        self.health = PLATFORM_HEALTH
+        self.half_broken = False
+
+        # color
+        self.surf.fill((0, 255, 0))
+        self.rect = self.surf.get_rect()
+        self.width = self.surf.get_width()
+        self.height = self.surf.get_height()
+        if position is None:
+            self.pos = vec(
+                (random.randint(0, WIDTH - 10), random.randint(0, HEIGHT - 30))
+            )
+        else:
+            self.pos = vec(position)
+        if moving:
+            self.vel = vec(random.choice([1, -1]) * PLATFORM_VEL, 0)
+        else:
+            self.vel = vec(0, 0)
+        self.moving = moving
+        self.point = True
+
+    def change_color(self):
+        self.surf.fill((255, 0, 0))
+        self.half_broken = True
+
+    def move(self):
+        self.pos += self.vel
+        half_width = self.width / 2
+        # Platform bounce back
+        if self.vel.x > 0 and self.pos.x + half_width > WIDTH:
+            self.vel.x = -1 * self.vel.x
+        if self.vel.x < 0 and self.pos.x - half_width < 0:
+            self.vel.x = -1 * self.vel.x
+        self.update_rect()
+
+    def update_rect(self):
+        self.rect.midbottom = int(self.pos.x), int(self.pos.y)
         
-
-gs = GlobalState()
-
-def left(s):
-    return s.pos.x - s.width / 2
-
-
-def right(s):
-    return s.pos.x + s.width / 2
-
-
-def top(s):
-    return s.pos.y - s.height
-
-
-def bottom(s):
-    return s.pos.y
-
-
-def min_sep_vec(rec1, rec2):
-    # Left object is rec1
-    if rec1.left > rec2.left:
-        rec1, rec2 = rec2, rec1
-
-    x2, x3, x4 = rec1.right, rec2.left, rec2.right
-
-    if x3 <= x2 <= x4:
-        x_gap = x2 - x3
-    else:
-        x_gap = x4 - x3
-
-    if rec1.top > rec2.top:
-        rec1, rec2 = rec2, rec1
-
-    y2, y3, y4 = rec1.bottom, rec2.top, rec2.bottom
-
-    if y3 <= y2 <= y4:
-        y_gap = y2 - y3
-    else:
-        y_gap = y4 - y3
-
-    return [x_gap, y_gap]
-
 
 class Player(pygame.sprite.Sprite):
     def __init__(self):
@@ -112,7 +93,7 @@ class Player(pygame.sprite.Sprite):
         self.jumping = False
         self.score = 0
         self.collided_platform = None
-        self.pos = vec(WIDTH // 2, HEIGHT - 30)
+        self.pos = vec(WIDTH // 2, HEIGHT - 50)
         self.update_rect()
         self.flash = True
 
@@ -185,7 +166,11 @@ class Player(pygame.sprite.Sprite):
             
 
     def move(self):
-
+        if gs.horizontally_inverted:
+            self.surf.fill(COLOR_FLIP)
+        else:
+            self.surf.fill(COLOR_NORMAL)
+        
         self.vel = vec(0, self.vel.y)
         self.vel.y += GRAVITY
 
@@ -236,63 +221,72 @@ class Player(pygame.sprite.Sprite):
                 self.surf.fill(COLOR_NORMAL)
         self.flash = not self.flash
 
-    def flip(self):
-        if not gs.horizontally_inverted:
-            self.surf.fill(COLOR_FLIP)
-        else:
-            self.surf.fill(COLOR_NORMAL)
-
     def update_rect(self):
         self.rect.midbottom = int(self.pos.x), int(self.pos.y)
 
+class GlobalState:
+    def __init__(self) -> None:
+        self.P1 = None
+        self.hInvert = 100
+        self.hInvertDec = random.randint(20, 30) / 100
+        self.vInvert = 100
+        self.vInvertDec = random.randint(5, 8) / 100
+        self.displaysurface = pygame.display.set_mode((WIDTH, HEIGHT), flags=pygame.SCALED, vsync=1)
+        self.horizontally_inverted = False
+        self.vertically_inverted = False
+        self.lives = 5
+        self.PT1 = None
+        self.difficulty = 0
+        self.phase_layers = PHASE_MAX_LAYERS + 1
+        self.all_sprites = pygame.sprite.Group()
+        self.platforms = pygame.sprite.Group()
+        self.falling = False
+        self.top_platforms = []
+        self.current_phase = 0
+        self.save_platform = None
+        self.FramePerSec = pygame.time.Clock()
+        
+gs = GlobalState()
 
-class Platform(pygame.sprite.Sprite):
-    def __init__(self, size=None, position=None, moving=True):
-        super().__init__()
-        if size is None:
-            self.surf = pygame.Surface((MAX_PLATFORM_WIDTH, PLATFORM_HEIGHT))
-        else:
-            self.surf = pygame.Surface(size)
+def left(s):
+    return s.pos.x - s.width / 2
 
-        self.height = self.surf.get_height()
-        self.width = self.surf.get_width()
-        self.health = PLATFORM_HEALTH
-        self.half_broken = False
 
-        # color
-        self.surf.fill((0, 255, 0))
-        self.rect = self.surf.get_rect()
-        self.width = self.surf.get_width()
-        self.height = self.surf.get_height()
-        if position is None:
-            self.pos = vec(
-                (random.randint(0, WIDTH - 10), random.randint(0, HEIGHT - 30))
-            )
-        else:
-            self.pos = vec(position)
-        if moving:
-            self.vel = vec(random.choice([1, -1]) * PLATFORM_VEL, 0)
-        else:
-            self.vel = vec(0, 0)
-        self.moving = moving
-        self.point = True
+def right(s):
+    return s.pos.x + s.width / 2
 
-    def change_color(self):
-        self.surf.fill((255, 0, 0))
-        self.half_broken = True
 
-    def move(self):
-        self.pos += self.vel
-        half_width = self.width / 2
-        # Platform bounce back
-        if self.vel.x > 0 and self.pos.x + half_width > WIDTH:
-            self.vel.x = -1 * self.vel.x
-        if self.vel.x < 0 and self.pos.x - half_width < 0:
-            self.vel.x = -1 * self.vel.x
-        self.update_rect()
+def top(s):
+    return s.pos.y - s.height
 
-    def update_rect(self):
-        self.rect.midbottom = int(self.pos.x), int(self.pos.y)
+
+def bottom(s):
+    return s.pos.y
+
+
+def min_sep_vec(rec1, rec2):
+    # Left object is rec1
+    if rec1.left > rec2.left:
+        rec1, rec2 = rec2, rec1
+
+    x2, x3, x4 = rec1.right, rec2.left, rec2.right
+
+    if x3 <= x2 <= x4:
+        x_gap = x2 - x3
+    else:
+        x_gap = x4 - x3
+
+    if rec1.top > rec2.top:
+        rec1, rec2 = rec2, rec1
+
+    y2, y3, y4 = rec1.bottom, rec2.top, rec2.bottom
+
+    if y3 <= y2 <= y4:
+        y_gap = y2 - y3
+    else:
+        y_gap = y4 - y3
+
+    return [x_gap, y_gap]
 
 
 def check(platform, groupies):
@@ -306,12 +300,6 @@ def check(platform, groupies):
                 abs(platform.rect.bottom - entity.rect.top) < 40
             ):
                 return True
-
-
-def flip_state():
-    gs.P1.flip()
-    gs.horizontally_inverted = not gs.horizontally_inverted
-
 
 def gonna_flip():
     gs.P1.gonna_flip()
@@ -442,9 +430,6 @@ def add_staircase():
     return pt_count
 
 
-current_phase = 0
-
-
 def add_platforms():
     prev_platform = gs.top_platforms[-1]
     prev_height = prev_platform.pos.y
@@ -452,29 +437,32 @@ def add_platforms():
         return
 
     if gs.phase_layers >= PHASE_MAX_LAYERS:
-        prev_phase = current_phase
-        while prev_phase == current_phase:
-            current_phase = random.randint(0, 3)
+        prev_phase = gs.current_phase
+        while prev_phase == gs.current_phase:
+            gs.current_phase = random.randint(0, 3)
         gs.phase_layers = 0
         gs.difficulty += 1
 
-    if current_phase == 0:
+    if gs.current_phase == 0:
         gs.phase_layers += add_staircase()
-    elif current_phase == 1:
+    elif gs.current_phase == 1:
         gs.phase_layers += add_random_platform()
-    elif current_phase == 2:
+    elif gs.current_phase == 2:
         gs.phase_layers += add_stack()
-    elif current_phase == 3:
+    elif gs.current_phase == 3:
         gs.phase_layers += add_stack(staggered=True)
 
 
 def init():
+    global gs
     gs = GlobalState()
 
+    gs.P1 = Player()
     gs.all_sprites.add(gs.P1)
+
     gs.PT1 = Platform(
         size=(WIDTH * 1.5, PLATFORM_HEIGHT),
-        position=(WIDTH // 2, HEIGHT - 10),
+        position=(WIDTH // 2, HEIGHT - 30),
         moving=False,
     )
     gs.PT1.health = 100 * PLATFORM_HEALTH
@@ -510,7 +498,6 @@ def end_game():
         # time.sleep(1)
         # gs.displaysurface.fill((255, 0, 0))
         # pygame.display.update()
-        # time.sleep(1)
         # pygame.quit()
         # sys.exit()
 
@@ -526,32 +513,27 @@ def camera():
 
     if gs.falling and gs.P1.collided_platform is not None:
         gs.falling = False
+        gs.save_platform = gs.P1.collided_platform
   
-
     if gs.falling:
         v = -(PLAYER_TERMINAL_VEL + 2)
         
     if gs.falling and gs.P1.pos.y < HEIGHT * 0.35:
         v = -PLAYER_TERMINAL_VEL
 
-    if gs.P1.collided_platform == gs.PT1:
-      v = 0          
+    if gs.P1.collided_platform != None and (gs.P1.collided_platform == gs.PT1 or gs.P1.collided_platform == gs.save_platform):
+        v = 0         
+
+    if gs.P1.pos.y > 0.98 * HEIGHT and gs.P1.collided_platform != None and gs.P1.collided_platform != gs.PT1:
+        gs.lives -= 1
+        if gs.lives == 0:
+            return -1  
+        v = -HEIGHT/2
+        gs.save_platform = gs.P1.collided_platform
 
     gs.P1.pos.y += v
     for plat in gs.platforms:
         plat.pos.y += v
-        # if plat.pos.y >= HEIGHT:
-        #     plat.kill()
-
-
-def bg_color():
-    if gs.vertically_inverted:
-        flip = 100 - gs.vInvert
-    else:
-        flip = gs.vInvert
-    return tuple(
-        map(lambda x: int(x[0] * flip / 100 + x[1] * (1 - flip / 100)), zip(BG1, BG2))
-    )
 
 
 def game_loop():
@@ -567,38 +549,23 @@ def game_loop():
         [entity.move() for entity in gs.platforms]
         gs.P1.collision()
 
-        if gs.P1.pos.y > HEIGHT:
-            end_game()
-            return
-
         add_platforms()
 
         gs.P1.update_rect()
-
 
         # handle the inversion counters
         gs.hInvert -= gs.hInvertDec
         gs.vInvert -= gs.vInvertDec
 
         if gs.hInvert <= 0:
-            flip_state()
+            gs.horizontally_inverted = not gs.horizontally_inverted
             gs.hInvert = 100
             gs.hInvertDec = random.randint(20, 30) / 100
 
         if gs.vInvert <= 0:
             gs.vertically_inverted = not gs.vertically_inverted
             gs.vInvert = 100
-            gs.vInvertDec = random.randint(5, 10) / 100
-
-        if gs.hInvert <= 20:
-            floor_val = gs.hInvert // 5
-            if floor_val % 2 == 0:
-                gs.P1.surf.fill(WHITE)
-            else:
-                if gs.horizontally_inverted:
-                    gs.P1.surf.fill(COLOR_FLIP)
-                else:
-                    gs.P1.surf.fill(COLOR_NORMAL)
+            gs.vInvertDec = random.randint(5, 8) / 100
 
         if gs.vertically_inverted:
             gs.displaysurface.fill(BG1)
@@ -608,8 +575,12 @@ def game_loop():
         if gs.vInvert <= 20:
             floor_val = gs.vInvert // 5
             if floor_val % 2 == 0:
-                gs.displaysurface.fill((230, 230, 230))
+                gs.displaysurface.fill((200, 200, 200))
 
+        if gs.hInvert <= 20:
+            floor_val = gs.hInvert // 5
+            if floor_val % 2 == 0:
+                gs.P1.surf.fill(WHITE)
 
         f = pygame.font.SysFont("Verdana", 20)
         g = f.render(str(gs.lives), True, (123, 255, 0))
@@ -621,11 +592,13 @@ def game_loop():
           gs.displaysurface.blit(pygame.transform.rotate(gs.displaysurface, 180), (0, 0))
 
         pygame.display.update()
-        FramePerSec.tick(FPS)
+        gs.FramePerSec.tick(FPS)
 
 
 def main():
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+    pygame.init()
+    pygame.display.set_caption("Right?")
     while True:
         init()
         game_loop()
