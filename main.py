@@ -6,6 +6,7 @@ import logging
 from sprite_sheet import SpriteSheet
 import pygame_menu
 import time
+
 vec = pygame.math.Vector2
 
 # constants!
@@ -36,6 +37,7 @@ COLOR_NORMAL = (255, 255, 0)
 COLOR_FLIP = (0, 255, 255)
 WHITE = (255, 255, 255)
 COLOR_NEW = (255, 0, 0)
+
 FONT = "assets/font/webpixel.otf"
 
 
@@ -54,10 +56,14 @@ class Platform(pygame.sprite.Sprite):
         if size is None:
             size = (MAX_PLATFORM_WIDTH, PLATFORM_HEIGHT)
 
-        normal_sprite =  _get_platform_sprite("assets/sprites/platforms/normal.png", size)
+        normal_sprite = _get_platform_sprite(
+            "assets/sprites/platforms/normal.png", size
+        )
         self.sprites["normal"] = normal_sprite
 
-        invert_sprite =  _get_platform_sprite("assets/sprites/platforms/invert.png", size)
+        invert_sprite = _get_platform_sprite(
+            "assets/sprites/platforms/invert.png", size
+        )
         self.sprites["invert"] = invert_sprite
 
         if inverse:
@@ -106,13 +112,13 @@ class Platform(pygame.sprite.Sprite):
         self.rect.midbottom = int(self.pos.x), int(self.pos.y)
 
 
-
 def _get_player_sprite(file):
     sprite = pygame.image.load(file).convert()
-    colorkey = sprite.get_at((0,0))
+    colorkey = sprite.get_at((0, 0))
     sprite.set_colorkey(colorkey, pygame.RLEACCEL)
 
     return pygame.transform.scale(sprite, (PLAYER_WIDTH, PLAYER_HEIGHT))
+
 
 class Player(pygame.sprite.Sprite):
     def __init__(self):
@@ -127,7 +133,7 @@ class Player(pygame.sprite.Sprite):
         self.sprites["invert"] = _get_player_sprite("assets/sprites/player/invert.png")
 
         self.sprites["middle"] = _get_player_sprite("assets/sprites/player/middle.png")
-        
+
         self.rect = self.surf.get_rect()
         self.vel = vec(0, 0)
         self.jumping = False
@@ -143,7 +149,6 @@ class Player(pygame.sprite.Sprite):
 
         if len(hits) == 0:
             return
-        # TODO move gs.platforms also
         collided_platform = hits[0]
 
         msv = min_sep_vec(self.rect, collided_platform.rect)
@@ -198,14 +203,12 @@ class Player(pygame.sprite.Sprite):
             if collided_platform.health <= 0:
                 collided_platform.kill()
 
-            
-
     def move(self):
         if gs.horizontally_inverted:
             self.surf = self.sprites["invert"]
         else:
             self.surf = self.sprites["normal"]
-        
+
         self.vel = vec(0, self.vel.y)
         self.vel.y += GRAVITY
 
@@ -218,7 +221,6 @@ class Player(pygame.sprite.Sprite):
             self.vel.x = PLAYER_HORIZONTAL_VEL
         self.vel.x *= -1 if gs.horizontally_inverted else 1
 
-
         hits = pygame.sprite.spritecollide(self, gs.platforms, False)
         if pressed_keys[K_SPACE] and len(hits) > 0 and not self.jumping:
             # jumping
@@ -230,7 +232,7 @@ class Player(pygame.sprite.Sprite):
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_SPACE:
                     gs.P1.cancel_jump()
-    
+
         if self.collided_platform:
             self.vel.x += self.collided_platform.vel.x
 
@@ -253,8 +255,7 @@ class Player(pygame.sprite.Sprite):
         self.rect.midbottom = int(self.pos.x), int(self.pos.y)
 
 
-DIALOGUE = \
-"""Alex tries to overcome her fears,
+DIALOGUE = """Alex tries to overcome her fears,
 but Xela takes control of her mind.
 and when Alex tries to get away,
 she's thrown upside down.
@@ -269,6 +270,7 @@ because Xela is just a part of her.
 [Press any key to continue...]
 """
 
+
 class Square(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
@@ -282,7 +284,6 @@ class Square(pygame.sprite.Sprite):
         self.rect.y = 200
         self.font = pygame.font.Font(FONT, 35)
 
-
     def blit(self):
         # Set up the y-coordinate for the first line
         x = self.rect.x + 10
@@ -294,6 +295,7 @@ class Square(pygame.sprite.Sprite):
             gs.displaysurface.blit(text_surface, (x, y))
             y += self.font.get_height()
 
+
 class GlobalState:
     def __init__(self) -> None:
         self.P1 = None
@@ -301,7 +303,9 @@ class GlobalState:
         self.hInvertDec = random.randint(20, 30) / 100
         self.vInvert = 100
         self.vInvertDec = random.randint(5, 8) / 100
-        self.displaysurface = pygame.display.set_mode((WIDTH, HEIGHT), flags=pygame.SCALED, vsync=1)
+        self.displaysurface = pygame.display.set_mode(
+            (WIDTH, HEIGHT), flags=pygame.SCALED, vsync=1
+        )
         self.horizontally_inverted = False
         self.vertically_inverted = False
         self.lives = 5
@@ -321,16 +325,24 @@ class GlobalState:
         self.BG1 = pygame.image.load("assets/sprites/background/normal.png").convert()
         self.BG2 = pygame.image.load("assets/sprites/background/invert.png").convert()
 
-
     def load_sounds(self):
-        sounds = ["damage", "background", "x_movement", "death", "gonna_flip", "vertical_flip"]
+        sounds = [
+            "damage",
+            "background",
+            "x_movement",
+            "death",
+            "gonna_flip",
+            "vertical_flip",
+        ]
         for sound in sounds:
             self.sounds[sound] = pygame.mixer.Sound(f"assets/sound/{sound}.mp3")
 
         self.sounds["flip"] = pygame.mixer.Sound(f"assets/sound/flip.wav")
         self.sounds["jump"] = pygame.mixer.Sound(f"assets/sound/jump.wav")
 
+
 gs = GlobalState()
+
 
 def left(s):
     return s.pos.x - s.width / 2
@@ -385,6 +397,7 @@ def check(platform, groupies):
             ):
                 return True
 
+
 def add_stack(staggered=False):
     center = (random.random() * 0.33 + 0.33) * WIDTH
     prev_plat = gs.top_platforms[-1]
@@ -392,7 +405,9 @@ def add_stack(staggered=False):
     offsets = [0, 1, -1]
     for idx in range(PHASE_MAX_LAYERS):
         for offset in offsets:
-            new_height = prev_plat.pos.y - JUMP_HEIGHT * min(0.9 + gs.difficulty / 10, 1)
+            new_height = prev_plat.pos.y - JUMP_HEIGHT * min(
+                0.9 + gs.difficulty / 10, 1
+            )
             if staggered and idx % 2 == 0:
                 stagger = MAX_PLATFORM_WIDTH * 0.75 * 0.5
             else:
@@ -406,7 +421,7 @@ def add_stack(staggered=False):
                 size=(MAX_PLATFORM_WIDTH * 0.75, PLATFORM_HEIGHT),
                 position=position,
                 moving=False,
-                inverse=gs.vertically_inverted
+                inverse=gs.vertically_inverted,
             )
             gs.platforms.add(pl)
             gs.all_sprites.add(pl)
@@ -418,14 +433,15 @@ def add_stack(staggered=False):
 
 
 def add_random_platform():
-    
     new_layer = False
     if len(gs.top_platforms) >= 2 or random.random() < 0.5:
         new_layer = True
         prev_platform = random.choice(gs.top_platforms)
         prev_height = prev_platform.pos.y
         new_height = prev_height - JUMP_HEIGHT * min(1, 0.75 + gs.difficulty / 10)
-        min_horizontal_dist = MAX_PLATFORM_WIDTH * 0.5 * min(1, 0.9 + gs.difficulty / 10)
+        min_horizontal_dist = (
+            MAX_PLATFORM_WIDTH * 0.5 * min(1, 0.9 + gs.difficulty / 10)
+        )
         max_horizontal_dist = JUMP_HEIGHT * 1.75 * PLAYER_HORIZONTAL_VEL / JUMP_SPEED
     else:
         new_layer = False
@@ -564,7 +580,6 @@ def keyboard_events():
             pygame.quit()
             sys.exit()
         if event.type == pygame.KEYDOWN:
-
             # Killing the dialogue box
             if gs.dialogue is not None:
                 gs.dialogue.kill()
@@ -595,7 +610,11 @@ def end_game():
     gs.displaysurface.fill((0, 0, 0))
     f = pygame.font.SysFont("Verdana", 40)
     g1 = f.render(str(f"GAME OVER"), True, (255, 255, 255))
-    g2 = f.render(str(f"Score: {int((gs.score - gs.P1.pos.y + 856) // 10)}"), True, (255, 255, 255))
+    g2 = f.render(
+        str(f"Score: {int((gs.score - gs.P1.pos.y + 856) // 10)}"),
+        True,
+        (255, 255, 255),
+    )
     gs.displaysurface.blit(g1, (WIDTH / 2 - 75, HEIGHT / 2 - 50))
     gs.displaysurface.blit(g2, (WIDTH / 2 - 75, HEIGHT / 2 + 50))
     pygame.display.update()
@@ -607,7 +626,12 @@ def camera():
     global gs
     v = 2
 
-    if gs.P1.pos.y > 0.96 * HEIGHT and gs.P1.collided_platform == None and gs.P1.vel.y >= 0 and not gs.falling:
+    if (
+        gs.P1.pos.y > 0.96 * HEIGHT
+        and gs.P1.collided_platform == None
+        and gs.P1.vel.y >= 0
+        and not gs.falling
+    ):
         gs.falling = True
 
         # DAMAGE SOUND
@@ -620,21 +644,27 @@ def camera():
     if gs.falling and gs.P1.collided_platform is not None:
         gs.falling = False
         gs.save_platform = gs.P1.collided_platform
-  
+
     if gs.falling:
         v = -(PLAYER_TERMINAL_VEL + 2)
-        
+
     if gs.falling and gs.P1.pos.y < HEIGHT * 0.35:
         v = -PLAYER_TERMINAL_VEL
 
-    if gs.P1.collided_platform != None and (gs.P1.collided_platform == gs.PT1 or gs.P1.collided_platform == gs.save_platform):
-        v = 0         
+    if gs.P1.collided_platform != None and (
+        gs.P1.collided_platform == gs.PT1 or gs.P1.collided_platform == gs.save_platform
+    ):
+        v = 0
 
-    if gs.P1.pos.y > 0.98 * HEIGHT and gs.P1.collided_platform != None and gs.P1.collided_platform != gs.PT1:
+    if (
+        gs.P1.pos.y > 0.98 * HEIGHT
+        and gs.P1.collided_platform != None
+        and gs.P1.collided_platform != gs.PT1
+    ):
         gs.lives -= 1
         if gs.lives == 0:
-            return -1  
-        v = -HEIGHT/2
+            return -1
+        v = -HEIGHT / 2
         gs.save_platform = gs.P1.collided_platform
 
     gs.P1.pos.y += v
@@ -648,6 +678,7 @@ def flip_platforms():
     global gs
     [platform.flip() for platform in gs.platforms]
 
+
 def game_loop():
     about_to_horizontal = True
     about_to_vertical = True
@@ -658,7 +689,7 @@ def game_loop():
         # handle keyboard input
         if keyboard_events() == -1:
             return
-        
+
         if camera() == -1:
             end_game()
             return
@@ -677,7 +708,6 @@ def game_loop():
             gs.vInvert -= gs.vInvertDec
 
         if gs.hInvert <= 0:
-
             gs.horizontally_inverted = not gs.horizontally_inverted
             gs.hInvert = 200
             gs.hInvertDec = random.randint(20, 30) / 100
@@ -696,7 +726,6 @@ def game_loop():
             flip_platforms()
             about_to_vertical = True
 
-
         if gs.vInvert <= 10:
             if about_to_vertical:
                 about_to_vertical = False
@@ -714,7 +743,6 @@ def game_loop():
             if floor_val % 2 == 0:
                 gs.P1.surf = gs.P1.sprites["middle"]
 
-
         # BACKGROUND DISPLAY
         if gs.vertically_inverted:
             gs.displaysurface.blit(gs.BG2, (0, 0))
@@ -723,17 +751,24 @@ def game_loop():
 
         for entity in gs.all_sprites:
             gs.displaysurface.blit(entity.surf, entity.rect)
-      
+
         if gs.vertically_inverted:
-          gs.displaysurface.blit(pygame.transform.rotate(gs.displaysurface, 180), (0, 0))
+            gs.displaysurface.blit(
+                pygame.transform.rotate(gs.displaysurface, 180), (0, 0)
+            )
 
         f = pygame.font.Font(FONT, 40)
-        g = f.render(str(f"Lives: {gs.lives} Score: {int((gs.score - gs.P1.pos.y + 856) // 10)}"), True, (0, 0, 0))
+        g = f.render(
+            str(
+                f"Lives: {gs.lives} Score: {int((gs.score - gs.P1.pos.y + 856) // 10)}"
+            ),
+            True,
+            (0, 0, 0),
+        )
         if gs.vertically_inverted:
             gs.displaysurface.blit(g, (10, HEIGHT - 40))
         else:
             gs.displaysurface.blit(g, (10, 10))
-
 
         if gs.dialogue is not None:
             gs.displaysurface.blit(gs.dialogue.surf, gs.dialogue)
@@ -741,30 +776,33 @@ def game_loop():
         pygame.display.update()
         gs.FramePerSec.tick(FPS)
 
+
 def start_the_game():
     init()
     game_loop()
+
 
 def main():
     global damage
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
     pygame.init()
-    pygame.mixer.init() 
+    pygame.mixer.init()
 
     pygame.display.set_caption("Right?")
 
     surface = pygame.display.set_mode((900, 900))
-    menu = pygame_menu.Menu('Right?', 900, 900, theme=pygame_menu.themes.THEME_BLUE)
-    menu.add.button('Play', start_the_game, font_name=FONT, font_size=50)
-    menu.add.button('Quit', pygame_menu.events.EXIT, font_name=FONT, font_size=50)
-    menu.add.label('\n\nControls: \n Use arrow keys for left/right \n Use space-bar for jumping', 
-            font_size=50, font_name=FONT, font_color=(120, 120, 235))
+    menu = pygame_menu.Menu("Right?", 900, 900, theme=pygame_menu.themes.THEME_BLUE)
+    menu.add.button("Play", start_the_game, font_name=FONT, font_size=50)
+    menu.add.button("Quit", pygame_menu.events.EXIT, font_name=FONT, font_size=50)
+    menu.add.label(
+        "\n\nControls: \n Use arrow keys for left/right \n Use space-bar for jumping",
+        font_size=50,
+        font_name=FONT,
+        font_color=(120, 120, 235),
+    )
 
     menu.mainloop(surface)
-
-
-
 
 
 if __name__ == "__main__":
