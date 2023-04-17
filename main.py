@@ -3,6 +3,7 @@ from pygame.locals import *
 import sys
 import random
 import logging
+from sprite_sheet import SpriteSheet
 vec = pygame.math.Vector2
 
 # constants!
@@ -32,6 +33,7 @@ COLOR_NORMAL = (255, 255, 0)
 COLOR_FLIP = (0, 255, 255)
 WHITE = (255, 255, 255)
 COLOR_NEW = (255, 0, 0)
+
 
 class Platform(pygame.sprite.Sprite):
     def __init__(self, size=None, position=None, moving=True):
@@ -80,14 +82,24 @@ class Platform(pygame.sprite.Sprite):
 
     def update_rect(self):
         self.rect.midbottom = int(self.pos.x), int(self.pos.y)
+
+
+
         
 
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        # self.image = pygame.image.load("character.png")
-        self.surf = pygame.Surface((PLAYER_WIDTH, PLAYER_HEIGHT))
-        self.surf.fill(COLOR_NORMAL)
+
+        filename ="sprite.png"
+        sprites = SpriteSheet(filename)
+        position = (150, 150, 160, 160)
+        player_sprite = pygame.transform.scale(sprites.image_at(position), (30, 30))
+
+        self.surf = player_sprite
+        
+        # self.surf = pygame.Surface((PLAYER_WIDTH, PLAYER_HEIGHT))
+        # self.surf.fill(COLOR_NORMAL)
         self.rect = self.surf.get_rect()
         self.vel = vec(0, 0)
         self.jumping = False
@@ -166,10 +178,10 @@ class Player(pygame.sprite.Sprite):
             
 
     def move(self):
-        if gs.horizontally_inverted:
-            self.surf.fill(COLOR_FLIP)
-        else:
-            self.surf.fill(COLOR_NORMAL)
+        # if gs.horizontally_inverted:
+        #     self.surf.fill(COLOR_FLIP)
+        # else:
+        #     self.surf.fill(COLOR_NORMAL)
         
         self.vel = vec(0, self.vel.y)
         self.vel.y += GRAVITY
@@ -212,6 +224,7 @@ class Player(pygame.sprite.Sprite):
                 self.vel.y = -10
 
     def gonna_flip(self):
+        return
         if not self.flash:
             self.surf.fill((255, 255, 255))
         else:
@@ -245,6 +258,7 @@ class GlobalState:
         self.current_phase = 0
         self.save_platform = None
         self.FramePerSec = pygame.time.Clock()
+        self.score = 0
         
 gs = GlobalState()
 
@@ -535,6 +549,8 @@ def camera():
     for plat in gs.platforms:
         plat.pos.y += v
 
+    gs.score += v
+
 
 def game_loop():
     while True:
@@ -582,14 +598,16 @@ def game_loop():
             if floor_val % 2 == 0:
                 gs.P1.surf.fill(WHITE)
 
-        f = pygame.font.SysFont("Verdana", 20)
-        g = f.render(str(gs.lives), True, (123, 255, 0))
-        gs.displaysurface.blit(g, (WIDTH / 2, 10))
+
         for entity in gs.all_sprites:
             gs.displaysurface.blit(entity.surf, entity.rect)
-
+      
         if gs.vertically_inverted:
           gs.displaysurface.blit(pygame.transform.rotate(gs.displaysurface, 180), (0, 0))
+
+        f = pygame.font.SysFont("Verdana", 20)
+        g = f.render(str(f"Score: {int((gs.score - gs.P1.pos.y + 856) // 10)} Lives: {gs.lives}"), True, (0, 0, 0))
+        gs.displaysurface.blit(g, (WIDTH / 2, 10))
 
         pygame.display.update()
         gs.FramePerSec.tick(FPS)
