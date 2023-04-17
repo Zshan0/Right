@@ -36,6 +36,7 @@ COLOR_NORMAL = (255, 255, 0)
 COLOR_FLIP = (0, 255, 255)
 WHITE = (255, 255, 255)
 COLOR_NEW = (255, 0, 0)
+FONT = "assets/font/webpixel.otf"
 
 
 def _get_platform_sprite(file, size):
@@ -46,7 +47,7 @@ def _get_platform_sprite(file, size):
 
 
 class Platform(pygame.sprite.Sprite):
-    def __init__(self, size=None, position=None, moving=True):
+    def __init__(self, size=None, position=None, moving=True, inverse=False):
         super().__init__()
         self.sprites = {}
         self.flipped = False
@@ -59,7 +60,11 @@ class Platform(pygame.sprite.Sprite):
         invert_sprite =  _get_platform_sprite("assets/sprites/platforms/invert.png", size)
         self.sprites["invert"] = invert_sprite
 
-        self.surf = normal_sprite
+        if inverse:
+            self.surf = invert_sprite
+        else:
+            self.surf = normal_sprite
+
         self.height = self.surf.get_height()
         self.width = self.surf.get_width()
         self.health = PLATFORM_HEALTH
@@ -268,24 +273,24 @@ class Square(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
 
-        self.surf = pygame.Surface((500, 500))
+        self.surf = pygame.Surface((600, 500))
         self.surf.fill((180, 180, 180))
         self.rect = self.surf.get_rect()
 
         self.rect = self.surf.get_rect()
-        self.rect.x = 200
+        self.rect.x = 150
         self.rect.y = 200
-        self.font = pygame.font.SysFont("Verdana", 28)
+        self.font = pygame.font.Font(FONT, 35)
 
 
     def blit(self):
         # Set up the y-coordinate for the first line
-        x = 210
-        y = 210
+        x = self.rect.x + 10
+        y = self.rect.y + 10
 
         # Render each line of text
         for line in DIALOGUE.splitlines():
-            text_surface = self.font.render(line, True, (255, 255, 255))
+            text_surface = self.font.render(line, True, (0, 0, 0))
             gs.displaysurface.blit(text_surface, (x, y))
             y += self.font.get_height()
 
@@ -401,6 +406,7 @@ def add_stack(staggered=False):
                 size=(MAX_PLATFORM_WIDTH * 0.75, PLATFORM_HEIGHT),
                 position=position,
                 moving=False,
+                inverse=gs.vertically_inverted
             )
             gs.platforms.add(pl)
             gs.all_sprites.add(pl)
@@ -721,7 +727,7 @@ def game_loop():
         if gs.vertically_inverted:
           gs.displaysurface.blit(pygame.transform.rotate(gs.displaysurface, 180), (0, 0))
 
-        f = pygame.font.SysFont("Verdana", 30)
+        f = pygame.font.Font(FONT, 40)
         g = f.render(str(f"Lives: {gs.lives} Score: {int((gs.score - gs.P1.pos.y + 856) // 10)}"), True, (0, 0, 0))
         if gs.vertically_inverted:
             gs.displaysurface.blit(g, (10, HEIGHT - 40))
@@ -750,10 +756,10 @@ def main():
 
     surface = pygame.display.set_mode((900, 900))
     menu = pygame_menu.Menu('Right?', 900, 900, theme=pygame_menu.themes.THEME_BLUE)
-    menu.add.button('Play', start_the_game)
-    menu.add.button('Quit', pygame_menu.events.EXIT)
+    menu.add.button('Play', start_the_game, font_name=FONT, font_size=50)
+    menu.add.button('Quit', pygame_menu.events.EXIT, font_name=FONT, font_size=50)
     menu.add.label('\n\nControls: \n Use arrow keys for left/right \n Use space-bar for jumping', 
-            font_size=30, font_name='Arial', font_color=(120, 120, 235))
+            font_size=50, font_name=FONT, font_color=(120, 120, 235))
 
     menu.mainloop(surface)
 
