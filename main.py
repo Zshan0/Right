@@ -29,8 +29,8 @@ MOVE_BY = 3
 JUMP_HEIGHT = JUMP_SPEED**2 / (2 * GRAVITY) - PLATFORM_HEIGHT
 PLATFORM_HEALTH = 50
 DAMAGE_THRESHOLD = PLATFORM_HEALTH / 2
-BG1 = (128, 128, 255)
-BG2 = (255, 128, 128)
+# BG1 = (128, 128, 255)
+# BG2 = (255, 128, 128)
 COLOR_NORMAL = (255, 255, 0)
 COLOR_FLIP = (0, 255, 255)
 WHITE = (255, 255, 255)
@@ -268,7 +268,11 @@ class GlobalState:
         self.save_platform = None
         self.FramePerSec = pygame.time.Clock()
         self.score = 0
+
         self.sounds = {}
+        self.BG1 = pygame.image.load("assets/sprites/background/normal.png").convert()
+        self.BG2 = pygame.image.load("assets/sprites/background/invert.png").convert()
+
 
     def load_sounds(self):
         sounds = ["damage", "background", "x_movement", "death", "gonna_flip", "vertical_flip"]
@@ -584,6 +588,8 @@ def flip_platforms():
 def game_loop():
     about_to_horizontal = True
     about_to_vertical = True
+
+    # gs.displaysurface = gs.BG2
     while True:
         # handle keyboard input
         if keyboard_events() == -1:
@@ -625,10 +631,6 @@ def game_loop():
             # gs.vInvertDec = random.randint(5, 8) / 100
             about_to_vertical = True
 
-        if gs.vertically_inverted:
-            gs.displaysurface.fill(BG1)
-        else:
-            gs.displaysurface.fill(BG2)
 
         if gs.vInvert <= 10:
             if about_to_vertical:
@@ -647,6 +649,12 @@ def game_loop():
             if floor_val % 2 == 0:
                 gs.P1.surf = gs.P1.sprites["middle"]
 
+
+        # BACKGROUND DISPLAY
+        if gs.vertically_inverted:
+            gs.displaysurface.blit(gs.BG2, (0, 0))
+        else:
+            gs.displaysurface.blit(gs.BG1, (0, 0))
 
         for entity in gs.all_sprites:
             gs.displaysurface.blit(entity.surf, entity.rect)
