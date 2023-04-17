@@ -3,6 +3,7 @@ from pygame.locals import *
 import sys
 import random
 import logging
+from sprite_sheet import SpriteSheet
 vec = pygame.math.Vector2
 
 # constants!
@@ -34,13 +35,20 @@ WHITE = (255, 255, 255)
 COLOR_NEW = (255, 0, 0)
 
 
+def _get_platform_sprite(file, size):
+    sprite_sheet = SpriteSheet(file)
+    position = (0, 0, size[0], size[1])
+    sprite = sprite_sheet.image_at(position)
+    return sprite
+
+
 class Platform(pygame.sprite.Sprite):
     def __init__(self, size=None, position=None, moving=True):
         super().__init__()
         if size is None:
-            self.surf = pygame.Surface((MAX_PLATFORM_WIDTH, PLATFORM_HEIGHT))
-        else:
-            self.surf = pygame.Surface(size)
+            size = (MAX_PLATFORM_WIDTH, PLATFORM_HEIGHT)
+        self.surf = _get_platform_sprite("assets/sprites/platforms/platform.png", size)
+        pygame.Surface(size)
 
         self.height = self.surf.get_height()
         self.width = self.surf.get_width()
