@@ -91,7 +91,7 @@ class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
 
-        filename ="sprite.png"
+        filename ="assets/sprites/player/player.png"
         sprites = SpriteSheet(filename)
         position = (150, 150, 160, 160)
         player_sprite = pygame.transform.scale(sprites.image_at(position), (30, 30))
@@ -188,14 +188,17 @@ class Player(pygame.sprite.Sprite):
 
         pressed_keys = pygame.key.get_pressed()
         if pressed_keys[K_LEFT]:
+            pygame.mixer.Sound.play(gs.sounds["x_movement"])
             self.vel.x = -PLAYER_HORIZONTAL_VEL
         if pressed_keys[K_RIGHT]:
+            pygame.mixer.Sound.play(gs.sounds["x_movement"])
             self.vel.x = PLAYER_HORIZONTAL_VEL
         self.vel.x *= -1 if gs.horizontally_inverted else 1
 
         hits = pygame.sprite.spritecollide(self, gs.platforms, False)
         if pressed_keys[K_SPACE] and len(hits) > 0 and not self.jumping:
             # jumping
+            pygame.mixer.Sound.play(gs.sounds["jump"])
             self.jumping = True
             self.vel.y = -JUMP_SPEED
             self.collided_platform = None
@@ -259,7 +262,14 @@ class GlobalState:
         self.save_platform = None
         self.FramePerSec = pygame.time.Clock()
         self.score = 0
-        
+        self.sounds = {}
+
+    def load_sounds(self):
+        print("LOADED SOUND")
+        sounds = ["damage", "jump", "background", "x_movement", "death"]
+        for sound in sounds:
+            self.sounds[sound] = pygame.mixer.Sound(f"assets/sound/{sound}.mp3")
+
 gs = GlobalState()
 
 def left(s):
@@ -470,6 +480,9 @@ def add_platforms():
 def init():
     global gs
     gs = GlobalState()
+    gs.load_sounds()
+
+    gs.sounds["background"].play(-1)
 
     gs.P1 = Player()
     gs.all_sprites.add(gs.P1)
@@ -517,12 +530,17 @@ def end_game():
 
 
 def camera():
+    global gs
     v = 2
 
     if gs.P1.pos.y > 0.96 * HEIGHT and gs.P1.collided_platform == None and gs.P1.vel.y >= 0 and not gs.falling:
         gs.falling = True
+
+        # DAMAGE SOUND
+        pygame.mixer.Sound.play(gs.sounds["damage"])
         gs.lives -= 1
         if gs.lives == 0:
+            pygame.mixer.Sound.play(gs.sounds["death"])
             return -1
 
     if gs.falling and gs.P1.collided_platform is not None:
@@ -609,13 +627,18 @@ def game_loop():
         g = f.render(str(f"Score: {int((gs.score - gs.P1.pos.y + 856) // 10)} Lives: {gs.lives}"), True, (0, 0, 0))
         gs.displaysurface.blit(g, (WIDTH / 2, 10))
 
+
         pygame.display.update()
         gs.FramePerSec.tick(FPS)
 
 
 def main():
+    global damage
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+
     pygame.init()
+    pygame.mixer.init() # add this line
+
     pygame.display.set_caption("Right?")
     while True:
         init()
