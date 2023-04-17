@@ -608,7 +608,7 @@ def end_game():
     time.sleep(1)
 
     gs.displaysurface.fill((0, 0, 0))
-    f = pygame.font.SysFont("Verdana", 40)
+    f = pygame.font.Font(FONT, 40)
     g1 = f.render(str(f"GAME OVER"), True, (255, 255, 255))
     g2 = f.render(
         str(f"Score: {int((gs.score - gs.P1.pos.y + 856) // 10)}"),
