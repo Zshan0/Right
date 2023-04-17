@@ -188,17 +188,17 @@ class Player(pygame.sprite.Sprite):
 
         pressed_keys = pygame.key.get_pressed()
         if pressed_keys[K_LEFT]:
-            pygame.mixer.Sound.play(gs.sounds["x_movement"])
+            # pygame.mixer.Sound.play(gs.sounds["x_movement"])
             self.vel.x = -PLAYER_HORIZONTAL_VEL
         if pressed_keys[K_RIGHT]:
-            pygame.mixer.Sound.play(gs.sounds["x_movement"])
+            # pygame.mixer.Sound.play(gs.sounds["x_movement"])
             self.vel.x = PLAYER_HORIZONTAL_VEL
         self.vel.x *= -1 if gs.horizontally_inverted else 1
+
 
         hits = pygame.sprite.spritecollide(self, gs.platforms, False)
         if pressed_keys[K_SPACE] and len(hits) > 0 and not self.jumping:
             # jumping
-            pygame.mixer.Sound.play(gs.sounds["jump"])
             self.jumping = True
             self.vel.y = -JUMP_SPEED
             self.collided_platform = None
@@ -207,7 +207,7 @@ class Player(pygame.sprite.Sprite):
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_SPACE:
                     gs.P1.cancel_jump()
-
+    
         if self.collided_platform:
             self.vel.x += self.collided_platform.vel.x
 
@@ -225,17 +225,6 @@ class Player(pygame.sprite.Sprite):
         if self.jumping:
             if self.vel.y < -10:
                 self.vel.y = -10
-
-    def gonna_flip(self):
-        return
-        if not self.flash:
-            self.surf.fill((255, 255, 255))
-        else:
-            if gs.horizontally_inverted:
-                self.surf.fill(COLOR_FLIP)
-            else:
-                self.surf.fill(COLOR_NORMAL)
-        self.flash = not self.flash
 
     def update_rect(self):
         self.rect.midbottom = int(self.pos.x), int(self.pos.y)
@@ -265,10 +254,13 @@ class GlobalState:
         self.sounds = {}
 
     def load_sounds(self):
-        print("LOADED SOUND")
-        sounds = ["damage", "jump", "background", "x_movement", "death"]
+        sounds = ["damage", "background", "x_movement", "death", "gonna_flip", "vertical_flip"]
         for sound in sounds:
             self.sounds[sound] = pygame.mixer.Sound(f"assets/sound/{sound}.mp3")
+
+        self.sounds["flip"] = pygame.mixer.Sound(f"assets/sound/flip.wav")
+        self.sounds["jump"] = pygame.mixer.Sound(f"assets/sound/jump.wav")
+        print("LOADED SOUND")
 
 gs = GlobalState()
 
@@ -324,10 +316,6 @@ def check(platform, groupies):
                 abs(platform.rect.bottom - entity.rect.top) < 40
             ):
                 return True
-
-def gonna_flip():
-    gs.P1.gonna_flip()
-
 
 def add_stack(staggered=False):
     center = (random.random() * 0.33 + 0.33) * WIDTH
@@ -507,6 +495,8 @@ def keyboard_events():
             sys.exit()
         if event.type == pygame.KEYDOWN:
             pressed_keys = pygame.key.get_pressed()
+            if pressed_keys[K_SPACE]:
+                gs.sounds["jump"].play()
             if pressed_keys[K_x]:
                 pygame.quit()
                 sys.exit()
@@ -571,6 +561,8 @@ def camera():
 
 
 def game_loop():
+    about_to_horizontal = True
+    about_to_vertical = True
     while True:
         # handle keyboard input
         if keyboard_events() == -1:
@@ -592,26 +584,41 @@ def game_loop():
         gs.vInvert -= gs.vInvertDec
 
         if gs.hInvert <= 0:
+            # HORIZONTAL FLIP SOUND
+            gs.sounds["flip"].play()
+
             gs.horizontally_inverted = not gs.horizontally_inverted
-            gs.hInvert = 100
+            gs.hInvert = 200
             gs.hInvertDec = random.randint(20, 30) / 100
+            about_to_horizontal = True
 
         if gs.vInvert <= 0:
+            # VERTICAL FLIP SOUND
+            gs.sounds["flip"].play()
+
             gs.vertically_inverted = not gs.vertically_inverted
             gs.vInvert = 100
             gs.vInvertDec = random.randint(5, 8) / 100
+            about_to_vertical = True
 
         if gs.vertically_inverted:
             gs.displaysurface.fill(BG1)
         else:
             gs.displaysurface.fill(BG2)
 
-        if gs.vInvert <= 20:
+        if gs.vInvert <= 10:
+            if about_to_vertical:
+                about_to_vertical = False
+                gs.sounds["vertical_flip"].play()
             floor_val = gs.vInvert // 5
             if floor_val % 2 == 0:
                 gs.displaysurface.fill((200, 200, 200))
 
-        if gs.hInvert <= 20:
+        if gs.hInvert <= 40:
+            # GONNA FLIP
+            if about_to_horizontal:
+                gs.sounds["gonna_flip"].play()
+                about_to_horizontal = False
             floor_val = gs.hInvert // 5
             if floor_val % 2 == 0:
                 gs.P1.surf.fill(WHITE)
@@ -637,7 +644,7 @@ def main():
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
     pygame.init()
-    pygame.mixer.init() # add this line
+    pygame.mixer.init() 
 
     pygame.display.set_caption("Right?")
     while True:
