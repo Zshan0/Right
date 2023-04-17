@@ -4,6 +4,8 @@ import sys
 import random
 import logging
 from sprite_sheet import SpriteSheet
+import pygame_menu
+import time
 vec = pygame.math.Vector2
 
 # constants!
@@ -281,7 +283,6 @@ class GlobalState:
 
         self.sounds["flip"] = pygame.mixer.Sound(f"assets/sound/flip.wav")
         self.sounds["jump"] = pygame.mixer.Sound(f"assets/sound/jump.wav")
-        print("LOADED SOUND")
 
 gs = GlobalState()
 
@@ -533,11 +534,19 @@ def keyboard_events():
 def end_game():
     for entity in gs.all_sprites:
         entity.kill()
-        # time.sleep(1)
-        # gs.displaysurface.fill((255, 0, 0))
-        # pygame.display.update()
-        # pygame.quit()
-        # sys.exit()
+
+    # DEATH SCREEN
+    time.sleep(1)
+
+    gs.displaysurface.fill((0, 0, 0))
+    f = pygame.font.SysFont("Verdana", 40)
+    g1 = f.render(str(f"GAME OVER"), True, (255, 255, 255))
+    g2 = f.render(str(f"Score: {int((gs.score - gs.P1.pos.y + 856) // 10)}"), True, (255, 255, 255))
+    gs.displaysurface.blit(g1, (WIDTH / 2 - 75, HEIGHT / 2 - 50))
+    gs.displaysurface.blit(g2, (WIDTH / 2 - 75, HEIGHT / 2 + 50))
+    pygame.display.update()
+
+    time.sleep(1)
 
 
 def camera():
@@ -596,6 +605,7 @@ def game_loop():
             return
         
         if camera() == -1:
+            end_game()
             return
         # move entities and check for collision
         gs.P1.move()
@@ -670,6 +680,9 @@ def game_loop():
         pygame.display.update()
         gs.FramePerSec.tick(FPS)
 
+def start_the_game():
+    init()
+    game_loop()
 
 def main():
     global damage
@@ -679,9 +692,16 @@ def main():
     pygame.mixer.init() 
 
     pygame.display.set_caption("Right?")
-    while True:
-        init()
-        game_loop()
+
+    surface = pygame.display.set_mode((900, 900))
+    menu = pygame_menu.Menu('Right?', 400, 300, theme=pygame_menu.themes.THEME_BLUE)
+    menu.add.button('Play', start_the_game)
+    menu.add.button('Quit', pygame_menu.events.EXIT)
+
+    menu.mainloop(surface)
+
+
+
 
 
 if __name__ == "__main__":
