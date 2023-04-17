@@ -11,12 +11,13 @@ vec = pygame.math.Vector2
 # constants!
 HEIGHT = 900
 WIDTH = 900
-PLAYER_HORIZONTAL_VEL = 8
-PLAYER_TERMINAL_VEL = 10
 FPS = 60
 GRAVITY = 0.5
 VMAX = 4
-JUMP_SPEED = 12
+
+PLAYER_HORIZONTAL_VEL = 12
+PLAYER_TERMINAL_VEL = 15
+JUMP_SPEED = 15
 
 PLAYER_HEIGHT = 60
 PLAYER_WIDTH = 60
@@ -31,8 +32,6 @@ MOVE_BY = 3
 JUMP_HEIGHT = JUMP_SPEED**2 / (2 * GRAVITY) - PLATFORM_HEIGHT
 PLATFORM_HEALTH = 50
 DAMAGE_THRESHOLD = PLATFORM_HEALTH / 2
-# BG1 = (128, 128, 255)
-# BG2 = (255, 128, 128)
 COLOR_NORMAL = (255, 255, 0)
 COLOR_FLIP = (0, 255, 255)
 WHITE = (255, 255, 255)
@@ -254,7 +253,8 @@ class GlobalState:
         self.hInvert = 100
         self.hInvertDec = random.randint(20, 30) / 100
         self.vInvert = 100
-        self.vInvertDec = random.randint(5, 8) / 100
+        self.vInvertDec = 20 / 100
+        # self.vInvertDec = random.randint(5, 8) / 100
         self.displaysurface = pygame.display.set_mode((WIDTH, HEIGHT), flags=pygame.SCALED, vsync=1)
         self.horizontally_inverted = False
         self.vertically_inverted = False
@@ -637,8 +637,7 @@ def game_loop():
 
 
             gs.vInvert = 100
-            gs.vInvertDec = 10 / 100
-            # gs.vInvertDec = random.randint(5, 8) / 100
+            gs.vInvertDec = random.randint(5, 8) / 100
             about_to_vertical = True
 
 
@@ -672,9 +671,12 @@ def game_loop():
         if gs.vertically_inverted:
           gs.displaysurface.blit(pygame.transform.rotate(gs.displaysurface, 180), (0, 0))
 
-        f = pygame.font.SysFont("Verdana", 20)
-        g = f.render(str(f"Score: {int((gs.score - gs.P1.pos.y + 856) // 10)} Lives: {gs.lives}"), True, (0, 0, 0))
-        gs.displaysurface.blit(g, (WIDTH / 2, 10))
+        f = pygame.font.SysFont("Verdana", 30)
+        g = f.render(str(f"Lives: {gs.lives} Score: {int((gs.score - gs.P1.pos.y + 856) // 10)}"), True, (0, 0, 0))
+        if gs.vertically_inverted:
+            gs.displaysurface.blit(g, (10, HEIGHT - 40))
+        else:
+            gs.displaysurface.blit(g, (10, 10))
 
 
         pygame.display.update()
@@ -694,9 +696,11 @@ def main():
     pygame.display.set_caption("Right?")
 
     surface = pygame.display.set_mode((900, 900))
-    menu = pygame_menu.Menu('Right?', 400, 300, theme=pygame_menu.themes.THEME_BLUE)
+    menu = pygame_menu.Menu('Right?', 900, 900, theme=pygame_menu.themes.THEME_BLUE)
     menu.add.button('Play', start_the_game)
     menu.add.button('Quit', pygame_menu.events.EXIT)
+    menu.add.label('\n\nControls: \n Use arrow keys for left/right \n Use space-bar for jumping', 
+            font_size=30, font_name='Arial', font_color=(120, 120, 235))
 
     menu.mainloop(surface)
 
