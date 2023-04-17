@@ -247,14 +247,55 @@ class Player(pygame.sprite.Sprite):
     def update_rect(self):
         self.rect.midbottom = int(self.pos.x), int(self.pos.y)
 
+
+DIALOGUE = \
+"""Alex tries to overcome her fears,
+but Xela takes control of her mind.
+and when Alex tries to get away,
+she's thrown upside down.
+
+Alex continues towards the peak,
+Xela pulls her down and takes her life.
+Alex learns to rise above,
+because Xela is just a part of her.
+
+
+
+[Press any key to continue...]
+"""
+
+class Square(pygame.sprite.Sprite):
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+
+        self.surf = pygame.Surface((500, 500))
+        self.surf.fill((180, 180, 180))
+        self.rect = self.surf.get_rect()
+
+        self.rect = self.surf.get_rect()
+        self.rect.x = 200
+        self.rect.y = 200
+        self.font = pygame.font.SysFont("Verdana", 28)
+
+
+    def blit(self):
+        # Set up the y-coordinate for the first line
+        x = 210
+        y = 210
+
+        # Render each line of text
+        for line in DIALOGUE.splitlines():
+            text_surface = self.font.render(line, True, (255, 255, 255))
+            gs.displaysurface.blit(text_surface, (x, y))
+            y += self.font.get_height()
+
 class GlobalState:
     def __init__(self) -> None:
         self.P1 = None
         self.hInvert = 100
         self.hInvertDec = random.randint(20, 30) / 100
         self.vInvert = 100
-        self.vInvertDec = 20 / 100
-        # self.vInvertDec = random.randint(5, 8) / 100
+        self.vInvertDec = random.randint(5, 8) / 100
         self.displaysurface = pygame.display.set_mode((WIDTH, HEIGHT), flags=pygame.SCALED, vsync=1)
         self.horizontally_inverted = False
         self.vertically_inverted = False
@@ -511,11 +552,18 @@ def init():
 
 
 def keyboard_events():
+    global gs
     for event in pygame.event.get():
         if event.type == QUIT:
             pygame.quit()
             sys.exit()
         if event.type == pygame.KEYDOWN:
+
+            # Killing the dialogue box
+            if gs.dialogue is not None:
+                gs.dialogue.kill()
+                gs.dialogue = None
+
             pressed_keys = pygame.key.get_pressed()
             if pressed_keys[K_SPACE]:
                 gs.sounds["jump"].play()
@@ -597,6 +645,7 @@ def flip_platforms():
 def game_loop():
     about_to_horizontal = True
     about_to_vertical = True
+    gs.dialogue = Square()
 
     # gs.displaysurface = gs.BG2
     while True:
@@ -617,27 +666,28 @@ def game_loop():
         gs.P1.update_rect()
 
         # handle the inversion counters
-        gs.hInvert -= gs.hInvertDec
-        gs.vInvert -= gs.vInvertDec
+        if gs.dialogue is None:
+            gs.hInvert -= gs.hInvertDec
+            gs.vInvert -= gs.vInvertDec
 
         if gs.hInvert <= 0:
-            # HORIZONTAL FLIP SOUND
-            gs.sounds["flip"].play()
 
             gs.horizontally_inverted = not gs.horizontally_inverted
             gs.hInvert = 200
             gs.hInvertDec = random.randint(20, 30) / 100
+
+            # HORIZONTAL FLIP SOUND
+            gs.sounds["flip"].play()
             about_to_horizontal = True
 
         if gs.vInvert <= 0:
-            # VERTICAL FLIP SOUND
-            gs.sounds["flip"].play()
             gs.vertically_inverted = not gs.vertically_inverted
-            flip_platforms()
-
-
             gs.vInvert = 100
             gs.vInvertDec = random.randint(5, 8) / 100
+
+            # VERTICAL FLIP SOUND
+            gs.sounds["flip"].play()
+            flip_platforms()
             about_to_vertical = True
 
 
@@ -679,6 +729,9 @@ def game_loop():
             gs.displaysurface.blit(g, (10, 10))
 
 
+        if gs.dialogue is not None:
+            gs.displaysurface.blit(gs.dialogue.surf, gs.dialogue)
+            gs.dialogue.blit()
         pygame.display.update()
         gs.FramePerSec.tick(FPS)
 
