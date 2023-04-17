@@ -3,7 +3,6 @@ from pygame.locals import *
 import sys
 import random
 import logging
-from sprite_sheet import SpriteSheet
 vec = pygame.math.Vector2
 
 # constants!
@@ -15,8 +14,8 @@ FPS = 60
 GRAVITY = 0.5
 VMAX = 4
 JUMP_SPEED = 12
-PLAYER_HEIGHT = 30
-PLAYER_WIDTH = 30
+PLAYER_HEIGHT = 40
+PLAYER_WIDTH = 40
 PLATFORM_HEIGHT = 15
 PLATFORM_VEL = 2
 MAX_PLATFORM_WIDTH = 100
@@ -48,8 +47,6 @@ class Platform(pygame.sprite.Sprite):
         self.health = PLATFORM_HEALTH
         self.half_broken = False
 
-        # color
-        self.surf.fill((0, 255, 0))
         self.rect = self.surf.get_rect()
         self.width = self.surf.get_width()
         self.height = self.surf.get_height()
@@ -67,8 +64,8 @@ class Platform(pygame.sprite.Sprite):
         self.point = True
 
     def change_color(self):
-        self.surf.fill((255, 0, 0))
         self.half_broken = True
+        self.surf.fill((255, 0, 0))
 
     def move(self):
         self.pos += self.vel
@@ -85,21 +82,27 @@ class Platform(pygame.sprite.Sprite):
 
 
 
-        
+def _get_player_sprite(file):
+    sprite = pygame.image.load(file).convert()
+    colorkey = sprite.get_at((0,0))
+    sprite.set_colorkey(colorkey, pygame.RLEACCEL)
+
+    return pygame.transform.scale(sprite, (PLAYER_WIDTH, PLAYER_HEIGHT))
 
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
 
-        filename ="assets/sprites/player/player.png"
-        sprites = SpriteSheet(filename)
-        position = (150, 150, 160, 160)
-        player_sprite = pygame.transform.scale(sprites.image_at(position), (30, 30))
+        self.sprites = {}
+        normal_sprite = _get_player_sprite("assets/sprites/player/normal.png")
 
-        self.surf = player_sprite
+        self.sprites["normal"] = normal_sprite
+        self.surf = normal_sprite
+
+        self.sprites["invert"] = _get_player_sprite("assets/sprites/player/invert.png")
+
+        self.sprites["middle"] = _get_player_sprite("assets/sprites/player/middle.png")
         
-        # self.surf = pygame.Surface((PLAYER_WIDTH, PLAYER_HEIGHT))
-        # self.surf.fill(COLOR_NORMAL)
         self.rect = self.surf.get_rect()
         self.vel = vec(0, 0)
         self.jumping = False
@@ -178,10 +181,10 @@ class Player(pygame.sprite.Sprite):
             
 
     def move(self):
-        # if gs.horizontally_inverted:
-        #     self.surf.fill(COLOR_FLIP)
-        # else:
-        #     self.surf.fill(COLOR_NORMAL)
+        if gs.horizontally_inverted:
+            self.surf = self.sprites["invert"]
+        else:
+            self.surf = self.sprites["normal"]
         
         self.vel = vec(0, self.vel.y)
         self.vel.y += GRAVITY
@@ -621,7 +624,7 @@ def game_loop():
                 about_to_horizontal = False
             floor_val = gs.hInvert // 5
             if floor_val % 2 == 0:
-                gs.P1.surf.fill(WHITE)
+                gs.P1.surf = gs.P1.sprites["middle"]
 
 
         for entity in gs.all_sprites:
