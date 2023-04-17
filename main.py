@@ -15,11 +15,13 @@ FPS = 60
 GRAVITY = 0.5
 VMAX = 4
 JUMP_SPEED = 12
-PLAYER_HEIGHT = 40
-PLAYER_WIDTH = 40
-PLATFORM_HEIGHT = 15
+
+PLAYER_HEIGHT = 60
+PLAYER_WIDTH = 60
+PLATFORM_HEIGHT = 22
+MAX_PLATFORM_WIDTH = 150
+
 PLATFORM_VEL = 2
-MAX_PLATFORM_WIDTH = 100
 MIN_CAMERA_SPEED = 0.3
 MAX_CAMERA_SPEED = 5
 PHASE_MAX_LAYERS = 10
@@ -45,15 +47,21 @@ def _get_platform_sprite(file, size):
 class Platform(pygame.sprite.Sprite):
     def __init__(self, size=None, position=None, moving=True):
         super().__init__()
+        self.sprites = {}
+        self.flipped = False
         if size is None:
             size = (MAX_PLATFORM_WIDTH, PLATFORM_HEIGHT)
-        self.surf = _get_platform_sprite("assets/sprites/platforms/platform.png", size)
-        pygame.Surface(size)
 
+        normal_sprite =  _get_platform_sprite("assets/sprites/platforms/normal.png", size)
+        self.sprites["normal"] = normal_sprite
+
+        invert_sprite =  _get_platform_sprite("assets/sprites/platforms/invert.png", size)
+        self.sprites["invert"] = invert_sprite
+
+        self.surf = normal_sprite
         self.height = self.surf.get_height()
         self.width = self.surf.get_width()
         self.health = PLATFORM_HEALTH
-        self.half_broken = False
 
         self.rect = self.surf.get_rect()
         self.width = self.surf.get_width()
@@ -71,9 +79,12 @@ class Platform(pygame.sprite.Sprite):
         self.moving = moving
         self.point = True
 
-    def change_color(self):
-        self.half_broken = True
-        self.surf.fill((255, 0, 0))
+    def flip(self):
+        if self.flipped:
+            self.surf = self.sprites["normal"]
+        else:
+            self.surf = self.sprites["invert"]
+        self.flipped = not self.flipped
 
     def move(self):
         self.pos += self.vel
@@ -180,11 +191,6 @@ class Player(pygame.sprite.Sprite):
 
             if collided_platform.health <= 0:
                 collided_platform.kill()
-            if (
-                not collided_platform.half_broken
-                and collided_platform.health <= DAMAGE_THRESHOLD
-            ):
-                collided_platform.change_color()
 
             
 
@@ -571,6 +577,10 @@ def camera():
     gs.score += v
 
 
+def flip_platforms():
+    global gs
+    [platform.flip() for platform in gs.platforms]
+
 def game_loop():
     about_to_horizontal = True
     about_to_vertical = True
@@ -606,10 +616,13 @@ def game_loop():
         if gs.vInvert <= 0:
             # VERTICAL FLIP SOUND
             gs.sounds["flip"].play()
-
             gs.vertically_inverted = not gs.vertically_inverted
+            flip_platforms()
+
+
             gs.vInvert = 100
-            gs.vInvertDec = random.randint(5, 8) / 100
+            gs.vInvertDec = 10 / 100
+            # gs.vInvertDec = random.randint(5, 8) / 100
             about_to_vertical = True
 
         if gs.vertically_inverted:
